@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card single-card">
+    <div class="card-title">TRADES HISTORY</div>
+    {% if trades_history %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Symbol</th>
+                        <th>Side</th>
+                        <th>Status</th>
+                        <th>Entry</th>
+                        <th>Exit</th>
+                        <th>Net PnL</th>
+                        <th>Opened</th>
+                        <th>Closed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in trades_history %}
+                        <tr>
+                            <td>{{ trade.id }}</td>
+                            <td>{{ trade.symbol }}</td>
+                            <td>{{ trade.side }}</td>
+                            <td>{{ trade.status }}</td>
+                            <td>{{ trade.entry_price or '-' }}</td>
+                            <td>{{ trade.exit_price or '-' }}</td>
+                            <td>{{ trade.net_pnl or '-' }}</td>
+                            <td>{{ trade.opened_at or '-' }}</td>
+                            <td>{{ trade.closed_at or '-' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="card-empty">No trades yet</div>
+    {% endif %}
+</section>
+{% endblock %}

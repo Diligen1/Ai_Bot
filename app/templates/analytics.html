@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="card single-card">
+    <div class="card-title">ANALYTICS</div>
+    <div class="card-row"><span>Total Trades</span><strong>{{ analytics.total_trades }}</strong></div>
+    <div class="card-row"><span>Wins</span><strong>{{ analytics.wins }}</strong></div>
+    <div class="card-row"><span>Losses</span><strong>{{ analytics.losses }}</strong></div>
+    <div class="card-row"><span>Win Rate</span><strong>{{ analytics.win_rate }}</strong></div>
+    <div class="card-row"><span>Profit Factor</span><strong>{{ analytics.profit_factor }}</strong></div>
+    <div class="card-row"><span>Average R</span><strong>{{ analytics.average_r }}</strong></div>
+    <div class="card-row"><span>Max Drawdown</span><strong>{{ analytics.max_drawdown }}</strong></div>
+    <div class="card-row"><span>Net Profit</span><strong>{{ analytics.net_profit }}</strong></div>
+</section>
+{% endblock %}

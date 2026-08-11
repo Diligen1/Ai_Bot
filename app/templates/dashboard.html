@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid-grid">
+    <section class="card">
+        <div class="card-title">SYSTEM STATUS</div>
+        <div class="card-row"><span>Bot Status</span><strong>{{ system_status.bot_status }}</strong></div>
+        <div class="card-row"><span>Binance</span><strong>{{ system_status.binance }}</strong></div>
+        <div class="card-row"><span>AI Analyzer</span><strong>{{ system_status.ai_analyzer }}</strong></div>
+        <div class="card-row"><span>Trading Mode</span><strong>{{ system_status.trading_mode }}</strong></div>
+    </section>
+
+    <section class="card">
+        <div class="card-title">BALANCE</div>
+        <div class="card-row"><span>Futures Balance</span><strong>{{ balance.futures_balance }}</strong></div>
+        <div class="card-row"><span>Spot Vault</span><strong>{{ balance.spot_vault }}</strong></div>
+        <div class="card-row"><span>Total Equity</span><strong>{{ balance.total_equity }}</strong></div>
+    </section>
+
+    <section class="card">
+        <div class="card-title">TODAY</div>
+        <div class="card-row"><span>PnL</span><strong>{{ today.pnl }}</strong></div>
+        <div class="card-row"><span>PnL Percent</span><strong>{{ today.pnl_percent }}</strong></div>
+        <div class="card-row"><span>Trades</span><strong>{{ today.trades }}</strong></div>
+        <div class="card-row"><span>Wins</span><strong>{{ today.wins }}</strong></div>
+        <div class="card-row"><span>Losses</span><strong>{{ today.losses }}</strong></div>
+    </section>
+
+    <section class="card">
+        <div class="card-title">RISK CONTROL</div>
+        <div class="card-row"><span>Leverage</span><strong>{{ risk_control.leverage }}</strong></div>
+        <div class="card-row"><span>Max Margin Per Trade</span><strong>{{ risk_control.max_margin_per_trade }}</strong></div>
+        <div class="card-row"><span>Risk Per Trade</span><strong>{{ risk_control.risk_per_trade }}</strong></div>
+        <div class="card-row"><span>Daily Drawdown Limit</span><strong>{{ risk_control.daily_drawdown_limit }}</strong></div>
+        <div class="card-row"><span>Weekly Drawdown Limit</span><strong>{{ risk_control.weekly_drawdown_limit }}</strong></div>
+        <div class="card-row"><span>Consecutive Losses</span><strong>{{ risk_control.consecutive_losses }}</strong></div>
+        <div class="card-row"><span>Kill Switch</span><strong>{{ risk_control.kill_switch }}</strong></div>
+    </section>
+
+    <section class="card wide-card">
+        <div class="card-title">OPEN POSITIONS</div>
+        {% if open_positions %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Qty</th>
+                            <th>Entry</th>
+                            <th>Leverage</th>
+                            <th>Opened</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trade in open_positions %}
+                            <tr>
+                                <td>{{ trade.symbol }}</td>
+                                <td>{{ trade.side }}</td>
+                                <td>{{ trade.quantity or '-' }}</td>
+                                <td>{{ trade.entry_price or '-' }}</td>
+                                <td>{{ trade.leverage or '-' }}</td>
+                                <td>{{ trade.opened_at or '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="card-text">No open positions</div>
+        {% endif %}
+    </section>
+
+    <section class="card wide-card">
+        <div class="card-title">AI MARKET ANALYSIS</div>
+        <div class="card-row"><span>Symbol</span><strong>{{ ai_market_analysis.symbol }}</strong></div>
+        <div class="card-row"><span>Final Score</span><strong>{{ ai_market_analysis.final_score }}</strong></div>
+        <div class="card-row"><span>Decision</span><strong>{{ ai_market_analysis.decision }}</strong></div>
+        <div class="card-row"><span>Reason</span><strong>{{ ai_market_analysis.reason }}</strong></div>
+    </section>
+</div>
+{% endblock %}

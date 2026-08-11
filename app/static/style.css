@@ -1,0 +1,235 @@
+:root {
+    color-scheme: dark;
+    background: #0d111b;
+    color: #e5e9f0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, rgba(58, 75, 121, 0.2), transparent 25%),
+                linear-gradient(180deg, #0b111c 0%, #090b12 100%);
+    color: #e5e9f0;
+}
+
+.layout-shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+}
+
+.sidebar {
+    padding: 32px 24px;
+    background: rgba(15, 23, 42, 0.96);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+}
+
+.brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+}
+
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.nav-link {
+    display: block;
+    padding: 14px 18px;
+    border-radius: 14px;
+    text-decoration: none;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.02);
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background: rgba(59, 130, 246, 0.18);
+    color: #ffffff;
+}
+
+.content-area {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.topbar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.topbar-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.topbar-description {
+    color: #94a3b8;
+}
+
+.page-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.form-row input,
+.form-row button {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.04);
+    color: #f8fafc;
+}
+
+.form-row input {
+    flex: 1 1 240px;
+    min-width: 220px;
+}
+
+.form-row button {
+    cursor: pointer;
+    background: rgba(59, 130, 246, 0.18);
+    color: #ffffff;
+    transition: background 0.2s ease;
+}
+
+.form-row button:hover {
+    background: rgba(59, 130, 246, 0.28);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 400px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.data-table th {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.grid-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: rgba(19, 28, 49, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+}
+
+.wide-card {
+    grid-column: span 2;
+}
+
+.single-card {
+    max-width: 900px;
+}
+
+.card-title {
+    font-size: 0.95rem;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #7c93c2;
+    margin-bottom: 18px;
+}
+
+.card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.card-row:last-child {
+    border-bottom: none;
+}
+
+.card-text,
+.card-empty {
+    color: #cbd5e1;
+    font-size: 1rem;
+    padding: 20px 0;
+}
+
+.divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 18px 0;
+}
+
+.footer {
+    margin-top: auto;
+    color: #718096;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 980px) {
+    .layout-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-grid,
+    .wide-card {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 640px) {
+    .sidebar {
+        padding: 20px;
+    }
+
+    .content-area {
+        padding: 20px;
+    }
+
+    .nav-link {
+        padding: 12px 16px;
+    }
+}

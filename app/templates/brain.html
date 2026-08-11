@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid-grid">
+    <section class="card">
+        <div class="card-title">Market</div>
+        <div class="card-row"><span>Symbol</span><strong>{{ brain.symbol }}</strong></div>
+        <div class="card-row"><span>4H Trend</span><strong>{{ brain.trend_4h }}</strong></div>
+        <div class="card-row"><span>1H Trend</span><strong>{{ brain.trend_1h }}</strong></div>
+        <div class="card-row"><span>15M Trend</span><strong>{{ brain.trend_15m }}</strong></div>
+    </section>
+
+    <section class="card">
+        <div class="card-title">Indicators</div>
+        <div class="card-row"><span>RSI</span><strong>{{ brain.rsi }}</strong></div>
+        <div class="card-row"><span>Volume</span><strong>{{ brain.volume }}</strong></div>
+        <div class="card-row"><span>Open Interest</span><strong>{{ brain.open_interest }}</strong></div>
+        <div class="card-row"><span>Funding</span><strong>{{ brain.funding }}</strong></div>
+    </section>
+
+    <section class="card wide-card">
+        <div class="card-title">Scores</div>
+        <div class="card-row"><span>Technical Score</span><strong>{{ brain.technical_score }}</strong></div>
+        <div class="card-row"><span>Historical Score</span><strong>{{ brain.historical_score }}</strong></div>
+        <div class="card-row"><span>AI Score</span><strong>{{ brain.ai_score }}</strong></div>
+        <div class="divider"></div>
+        <div class="card-row"><span>Final Score</span><strong>{{ brain.final_score }}</strong></div>
+        <div class="card-row"><span>Decision</span><strong>{{ brain.decision }}</strong></div>
+    </section>
+</div>
+{% endblock %}

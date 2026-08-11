@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title or 'AI Futures Bot' }}</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <div class="layout-shell">
+        <aside class="sidebar">
+            <div class="brand">AI Futures Bot</div>
+            <nav class="nav-menu">
+                {% for item in nav_items %}
+                    <a href="{{ item.href }}" class="nav-link{% if request.url.path == item.href %} active{% endif %}">{{ item.label }}</a>
+                {% endfor %}
+            </nav>
+            <div class="footer">Test dashboard • No live exchange</div>
+        </aside>
+        <main class="content-area">
+            <div class="topbar">
+                <div class="topbar-title">{{ title }}</div>
+                <div class="topbar-description">Test mode dashboard for AI Futures Bot.</div>
+            </div>
+            <div class="page-body">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>
