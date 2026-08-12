@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Undefined
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 
 from app.dashboard_data import (
     add_whitelist_symbol,
@@ -17,7 +17,9 @@ from app.dashboard_data import (
     get_open_paper_positions,
     get_open_positions,
     get_paper_trading_status,
+    get_profit_split_settings_view,
     get_risk_control,
+    get_spot_vault_view,
     get_system_status,
     get_today_stats,
     get_trades_history,
@@ -25,6 +27,7 @@ from app.dashboard_data import (
     get_whitelist_symbols,
     remove_whitelist_symbol,
     set_paper_trading_enabled,
+    set_profit_split_settings,
 )
 from app.i18n import UI_STRINGS
 
@@ -70,6 +73,9 @@ def dashboard(request: Request) -> HTMLResponse:
             "market_updated": get_market_updated(),
             "paper_trading": get_paper_trading_status(),
             "open_paper_positions": get_open_paper_positions(),
+            "spot_vault": get_spot_vault_view(),
+            "profit_split": get_profit_split_settings_view(),
+            "profit_split_error": request.query_params.get("profit_split_error"),
         },
     )
 
@@ -141,6 +147,23 @@ async def symbols_submit(request: Request) -> RedirectResponse:
         except ValueError:
             pass
     return RedirectResponse(url='/symbols', status_code=303)
+
+
+@app.post("/profit-split/settings")
+async def profit_split_settings_submit(request: Request) -> RedirectResponse:
+    body = await request.body()
+    data = parse_qs(body.decode('utf-8'))
+    try:
+        spot_percent = float(data.get('spot_percent', [''])[0])
+        futures_percent = float(data.get('futures_percent', [''])[0])
+    except (ValueError, IndexError):
+        error = quote('Некорректные значения процентов')
+        return RedirectResponse(url=f'/?profit_split_error={error}', status_code=303)
+    try:
+        set_profit_split_settings(spot_percent, futures_percent)
+    except ValueError as exc:
+        return RedirectResponse(url=f'/?profit_split_error={quote(str(exc))}', status_code=303)
+    return RedirectResponse(url='/', status_code=303)
 
 
 @app.post("/paper-trading/toggle")

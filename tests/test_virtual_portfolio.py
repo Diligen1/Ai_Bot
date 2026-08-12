@@ -32,8 +32,34 @@ def test_profit_increases_equity(tmp_path: Path) -> None:
     db = _manager(tmp_path)
     db.add_trade(symbol='BTCUSDT', side='BUY', status='closed', net_pnl=10.0, opened_at='2026-01-01T00:00:00+00:00', closed_at='2026-01-01T01:00:00+00:00', source='paper')
     state = VirtualPortfolio(db).get_state()
+    # This DB-level trade bypasses PaperTradingEngine/VirtualSpotVault entirely,
+    # so no spot_vault_transfers row exists for it — nothing was actually set
+    # aside, so the full profit counts toward trading equity (see
+    # VirtualPortfolio._trading_contribution: only trades with a RECORDED split
+    # are reduced; Profit Split is applied by PaperTradingEngine._close_leg, not
+    # by raw DatabaseManager.add_trade calls like this one).
     assert state.current_equity == 510.0
     assert state.realized_pnl == 10.0
+    assert state.total_equity == 510.0
+
+
+def test_equity_uses_actual_recorded_split_not_current_setting(tmp_path: Path) -> None:
+    db = _manager(tmp_path)
+    trade_id = db.add_trade(symbol='BTCUSDT', side='BUY', status='closed', net_pnl=10.0, opened_at='2026-01-01T00:00:00+00:00', closed_at='2026-01-01T01:00:00+00:00', source='paper')
+    db.record_profit_split(
+        trade_id=trade_id, symbol='BTCUSDT', profit=10.0,
+        spot_amount=5.0, futures_amount=5.0,
+        spot_percent_used=50.0, futures_percent_used=50.0,
+    )
+
+    # Changing the persistent Profit Split setting afterward must never
+    # reinterpret this already-processed trade's equity contribution.
+    db.set_profit_split_settings(30.0, 70.0)
+
+    state = VirtualPortfolio(db).get_state()
+    assert state.current_equity == 505.0  # 500 + the RECORDED futures_amount (5.0), not 500 + 7.0
+    assert state.spot_vault_balance == 5.0
+    assert state.total_equity == 510.0
 
 
 def test_loss_decreases_equity(tmp_path: Path) -> None:
@@ -52,6 +78,8 @@ def test_multiple_trades_aggregate_correctly(tmp_path: Path) -> None:
         )
     state = VirtualPortfolio(db).get_state()
     assert state.realized_pnl == 11.0
+    # No spot_vault_transfers rows exist for these raw trades (see comment in
+    # test_profit_increases_equity), so every trade counts in full.
     assert state.current_equity == 511.0
 
 

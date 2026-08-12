@@ -480,8 +480,13 @@ def test_portfolio_equity_updates_after_close(tmp_path: Path) -> None:
     engine.run_once(now=NOW)
 
     state = portfolio.get_state(now=NOW)
-    assert state.current_equity == 500.0 + state.realized_pnl
+    # Total virtual capital (trading equity + spot vault) always tracks total
+    # realized PnL 1:1 — Profit Split only decides WHERE the profit sits, not
+    # how much of it exists (see trading/virtual_spot_vault.py).
+    assert state.total_equity == 500.0 + state.realized_pnl
     assert state.realized_pnl > 0
+    assert state.spot_vault_balance > 0
+    assert state.current_equity < 500.0 + state.realized_pnl
 
 
 # -- risk-limit integration -----------------------------------------------

@@ -26,9 +26,10 @@ MINIMUM_RISK_REWARD = 1.5
 ESTIMATED_FEE_PERCENT = 0.08
 ESTIMATED_SLIPPAGE_PERCENT = 0.05
 
-# Placeholder profit-split settings (Profit Split feature itself is not implemented)
-PROFIT_TO_SPOT_PERCENT = 50
-PROFIT_TO_FUTURES_PERCENT = 50
+# Profit Split V1 (virtual only, see trading/virtual_spot_vault.py) — the
+# spot/futures percentages are user-configurable via the Dashboard and are
+# NOT read from here: they are persistent settings in database/db.py
+# (get_profit_split_settings/set_profit_split_settings), defaulting to 50/50.
 
 # Paper Trading Engine (virtual execution only, see trading/paper_trading_engine.py)
 TP1_CLOSE_PERCENT = 50

@@ -27,6 +27,7 @@ from config.settings import (
 from database.db import DatabaseManager
 from market.setup_engine import TradeSetupEngine
 from trading.virtual_portfolio import VirtualPortfolio
+from trading.virtual_spot_vault import VirtualSpotVault
 
 if TYPE_CHECKING:
     # Import-time only: risk.risk_manager imports trading.virtual_portfolio, so a
@@ -76,6 +77,7 @@ class PaperTradingEngine:
         symbols_provider: Callable[[], list[str]],
         config: RiskConfig = DEFAULT_RISK_CONFIG,
         interval_seconds: float = PAPER_ENGINE_INTERVAL_SECONDS,
+        spot_vault: VirtualSpotVault | None = None,
     ) -> None:
         self.db = db
         self.portfolio = portfolio
@@ -86,6 +88,7 @@ class PaperTradingEngine:
         self.symbols_provider = symbols_provider
         self.config = config
         self.interval_seconds = interval_seconds
+        self.spot_vault = spot_vault or VirtualSpotVault(db)
         self._stop = False
         self._started = False
         self._thread: Thread | None = None
@@ -349,7 +352,7 @@ class PaperTradingEngine:
         except (TypeError, ValueError):
             snapshot = {}
 
-        self.db.add_trade(
+        trade_id = self.db.add_trade(
             symbol=position['symbol'],
             side='BUY' if direction == 'LONG' else 'SELL',
             status='closed',
@@ -373,6 +376,11 @@ class PaperTradingEngine:
             setup_id=position.get('setup_id'),
             strategy_version=position.get('strategy_version') or STRATEGY_VERSION,
             setup_score=snapshot.get('setup_score'),
+        )
+
+        self.spot_vault.process_closed_trade(
+            {'id': trade_id, 'source': 'paper', 'symbol': position['symbol'], 'net_pnl': net_pnl},
+            now=now,
         )
 
         new_remaining = max(0.0, position['quantity_remaining'] - quantity)

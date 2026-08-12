@@ -184,6 +184,20 @@ class DatabaseManager:
             )
             """
         )
+        self._execute(
+            """
+            CREATE TABLE IF NOT EXISTS spot_vault_transfers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                trade_id INTEGER NOT NULL UNIQUE,
+                symbol TEXT,
+                profit REAL NOT NULL,
+                spot_amount REAL NOT NULL,
+                futures_amount REAL NOT NULL,
+                created_at TEXT
+            )
+            """
+        )
+        self._migrate_spot_vault_transfers_percent_columns()
         if first_run:
             self._initialize_default_whitelist()
         else:
@@ -229,6 +243,16 @@ class DatabaseManager:
         if 'execution_status' not in columns:
             self._execute("ALTER TABLE setups ADD COLUMN execution_status TEXT")
         self._execute("UPDATE setups SET execution_status = 'PENDING' WHERE execution_status IS NULL")
+
+    def _migrate_spot_vault_transfers_percent_columns(self) -> None:
+        """Records which spot/futures split percentages were actually used for each
+        transfer, so changing the persistent setting later never reinterprets a
+        historical split (see get_profit_split_settings/set_profit_split_settings)."""
+        cursor = self._execute("PRAGMA table_info(spot_vault_transfers)")
+        columns = [row[1] for row in cursor.fetchall()]
+        for column in ('spot_percent_used', 'futures_percent_used'):
+            if column not in columns:
+                self._execute(f"ALTER TABLE spot_vault_transfers ADD COLUMN {column} REAL")
 
     def add_trade(
         self,
@@ -693,3 +717,77 @@ class DatabaseManager:
     def get_paper_position(self, position_id: int) -> sqlite3.Row | None:
         cursor = self._execute("SELECT * FROM paper_positions WHERE id = ?", (position_id,))
         return cursor.fetchone()
+
+    # -- Profit Split V1: Virtual Spot Vault ---------------------------------
+
+    def record_profit_split(
+        self,
+        trade_id: int,
+        symbol: str,
+        profit: float,
+        spot_amount: float,
+        futures_amount: float,
+        spot_percent_used: float,
+        futures_percent_used: float,
+        created_at: str | None = None,
+    ) -> int | None:
+        """Inserts one profit-split row for a closed trade. `trade_id` is UNIQUE,
+        so a second call for the same trade is rejected at the database level —
+        this is the idempotency guard, not just an application-side check.
+        Returns the new row id, or None if this trade was already processed."""
+        created_at = created_at or datetime.now(timezone.utc).isoformat()
+        try:
+            cursor = self._execute(
+                """
+                INSERT INTO spot_vault_transfers (
+                    trade_id, symbol, profit, spot_amount, futures_amount,
+                    spot_percent_used, futures_percent_used, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (trade_id, symbol, profit, spot_amount, futures_amount, spot_percent_used, futures_percent_used, created_at),
+            )
+        except sqlite3.IntegrityError:
+            return None
+        return cursor.lastrowid
+
+    def get_spot_vault_balance(self) -> float:
+        cursor = self._execute("SELECT COALESCE(SUM(spot_amount), 0.0) FROM spot_vault_transfers")
+        row = cursor.fetchone()
+        return float(row[0]) if row and row[0] is not None else 0.0
+
+    def get_last_profit_split(self) -> sqlite3.Row | None:
+        cursor = self._execute("SELECT * FROM spot_vault_transfers ORDER BY id DESC LIMIT 1")
+        return cursor.fetchone()
+
+    def get_profit_split_for_trade(self, trade_id: int) -> sqlite3.Row | None:
+        cursor = self._execute("SELECT * FROM spot_vault_transfers WHERE trade_id = ?", (trade_id,))
+        return cursor.fetchone()
+
+    def get_spot_vault_transfers(self) -> list[sqlite3.Row]:
+        """All profit-split rows ever recorded — used by VirtualPortfolio to compute
+        trading equity from each trade's ACTUALLY-applied split, never from
+        whatever the current setting happens to be (old trades never recalculate)."""
+        cursor = self._execute("SELECT * FROM spot_vault_transfers")
+        return cursor.fetchall()
+
+    # -- Profit Split V1: persistent spot/futures percentages ---------------
+
+    def get_profit_split_settings(self) -> tuple[float, float]:
+        """Returns (spot_percent, futures_percent), defaulting to 50/50 if never set."""
+        spot_raw = self.get_setting('profit_split_spot_percent')
+        futures_raw = self.get_setting('profit_split_futures_percent')
+        if spot_raw is None or futures_raw is None:
+            return 50.0, 50.0
+        return float(spot_raw), float(futures_raw)
+
+    def set_profit_split_settings(self, spot_percent: float, futures_percent: float) -> None:
+        """Persists the Profit Split spot/futures percentages. Only ever affects
+        NEW splits (see VirtualSpotVault.process_closed_trade) — trades already
+        recorded in spot_vault_transfers keep the percentages they were split
+        with, unaffected by this call."""
+        if spot_percent < 0 or futures_percent < 0:
+            raise ValueError('Проценты не могут быть отрицательными')
+        if abs((spot_percent + futures_percent) - 100.0) > 1e-6:
+            raise ValueError('Сумма процентов Spot и Futures должна быть равна 100%')
+        self.set_setting('profit_split_spot_percent', str(spot_percent))
+        self.set_setting('profit_split_futures_percent', str(futures_percent))

@@ -6,6 +6,12 @@ from seed/demo history — see database/db.py migration). Open-position count
 and reserved margin come from `paper_positions`, PaperTradingEngine's own
 live-state table (see trading/paper_trading_engine.py) — the `trades` table
 never holds an 'open' row for a paper position, only its closed legs.
+
+`current_equity` (trading/futures equity) only credits the futures-retained
+share of each profitable trade; the rest was set aside into the
+VirtualSpotVault (trading/virtual_spot_vault.py) and is reported separately
+as `spot_vault_balance`, with `total_equity` as their sum. Losses always
+reduce trading equity in full, never split.
 """
 from __future__ import annotations
 
@@ -34,6 +40,8 @@ class PortfolioState:
     daily_drawdown_percent: float
     weekly_drawdown_percent: float
     consecutive_losses: int
+    spot_vault_balance: float
+    total_equity: float
 
 
 class VirtualPortfolio:
@@ -84,6 +92,27 @@ class VirtualPortfolio:
         closed_at = cls._parse_timestamp(trade.get('closed_at'))
         return closed_at is not None and closed_at < boundary
 
+    def _spot_vault_transfers_by_trade(self) -> dict[int, dict[str, Any]]:
+        return {row['trade_id']: dict(row) for row in self.db.get_spot_vault_transfers()}
+
+    @staticmethod
+    def _trading_contribution(trade: dict[str, Any], transfers_by_trade: dict[int, dict[str, Any]]) -> float:
+        """Only the futures-retained share of a profit counts toward trading
+        equity — the rest went to the VirtualSpotVault (see
+        trading/virtual_spot_vault.py). A loss counts in full: it is never
+        split, so it reduces trading equity completely.
+
+        Uses the ACTUAL amount recorded for this specific trade (frozen at the
+        time it was processed), never the current Profit Split setting — so
+        changing the setting later never reinterprets an already-closed trade.
+        A profitable trade with no transfer record yet (not processed by the
+        vault) counts in full, since nothing has actually been set aside."""
+        net_pnl = trade.get('net_pnl') or 0.0
+        if net_pnl <= 0:
+            return net_pnl
+        transfer = transfers_by_trade.get(trade.get('id'))
+        return transfer['futures_amount'] if transfer is not None else net_pnl
+
     @staticmethod
     def _consecutive_losses(closed_trades: list[dict[str, Any]]) -> int:
         """Count the current losing streak from the most recently closed trade backwards.
@@ -106,15 +135,21 @@ class VirtualPortfolio:
         now = now or datetime.now(timezone.utc)
         starting_balance = self.config.initial_virtual_balance
         closed = self._closed_paper_trades()
+        transfers_by_trade = self._spot_vault_transfers_by_trade()
         realized_pnl = sum(t.get('net_pnl') or 0.0 for t in closed)
-        current_equity = starting_balance + realized_pnl
+        trading_pnl = sum(self._trading_contribution(t, transfers_by_trade) for t in closed)
+        current_equity = starting_balance + trading_pnl
 
         day_start_dt = self._day_start(now)
         week_start_dt = self._week_start(now)
-        pnl_before_day = sum(t.get('net_pnl') or 0.0 for t in closed if self._closed_before(t, day_start_dt))
-        pnl_before_week = sum(t.get('net_pnl') or 0.0 for t in closed if self._closed_before(t, week_start_dt))
-        day_start_equity = starting_balance + pnl_before_day
-        week_start_equity = starting_balance + pnl_before_week
+        trading_pnl_before_day = sum(
+            self._trading_contribution(t, transfers_by_trade) for t in closed if self._closed_before(t, day_start_dt)
+        )
+        trading_pnl_before_week = sum(
+            self._trading_contribution(t, transfers_by_trade) for t in closed if self._closed_before(t, week_start_dt)
+        )
+        day_start_equity = starting_balance + trading_pnl_before_day
+        week_start_equity = starting_balance + trading_pnl_before_week
         daily_realized_pnl = current_equity - day_start_equity
         weekly_realized_pnl = current_equity - week_start_equity
         daily_drawdown_percent = (
@@ -128,6 +163,7 @@ class VirtualPortfolio:
         reserved_margin = sum(p.get('margin_used') or 0.0 for p in open_positions)
         open_positions_count = len(open_positions)
         available_equity = current_equity - reserved_margin
+        spot_vault_balance = self.db.get_spot_vault_balance()
 
         return PortfolioState(
             starting_balance=starting_balance,
@@ -143,6 +179,8 @@ class VirtualPortfolio:
             daily_drawdown_percent=daily_drawdown_percent,
             weekly_drawdown_percent=weekly_drawdown_percent,
             consecutive_losses=self._consecutive_losses(closed),
+            spot_vault_balance=spot_vault_balance,
+            total_equity=current_equity + spot_vault_balance,
         )
 
     def open_symbols(self) -> set[str]:

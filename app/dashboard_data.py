@@ -14,6 +14,7 @@ from market.setup_engine import TradeSetupEngine
 from risk.risk_manager import RiskManager
 from trading.paper_trading_engine import PaperTradingEngine
 from trading.virtual_portfolio import VirtualPortfolio
+from trading.virtual_spot_vault import VirtualSpotVault
 
 _db = DatabaseManager()
 _db.create_tables()
@@ -24,6 +25,7 @@ _market_analysis_service = MarketAnalysisService(_market_service)
 _setup_engine = TradeSetupEngine()
 _portfolio = VirtualPortfolio(_db)
 _risk_manager = RiskManager(_db, _portfolio)
+_spot_vault = VirtualSpotVault(_db)
 
 
 def get_nav_items() -> list[dict[str, str]]:
@@ -147,14 +149,18 @@ def get_ai_market_analysis() -> dict[str, str]:
 
 def get_trades_history(source: str | None = None) -> list[dict[str, str]]:
     trades = _db.get_trade_history(source=source)
-    return [
-        {
-            **dict(row),
-            'opened_at': format_timestamp(row['opened_at']),
-            'closed_at': format_timestamp(row['closed_at']),
-        }
-        for row in trades
-    ]
+    result = []
+    for row in trades:
+        trade = dict(row)
+        split = _spot_vault.get_split_for_trade(trade['id']) if trade.get('source') == 'paper' else None
+        result.append({
+            **trade,
+            'opened_at': format_timestamp(trade['opened_at']),
+            'closed_at': format_timestamp(trade['closed_at']),
+            'profit_split_spot': f"{split['spot_amount']:.2f} USDT" if split else None,
+            'profit_split_futures': f"{split['futures_amount']:.2f} USDT" if split else None,
+        })
+    return result
 
 
 def get_analytics_data() -> dict[str, str]:
@@ -271,8 +277,61 @@ def get_market_symbols() -> list[str]:
 _paper_engine = PaperTradingEngine(
     _db, _portfolio, _risk_manager, _setup_engine,
     _market_service, _market_analysis_service, get_market_symbols,
+    spot_vault=_spot_vault,
 )
 _paper_engine.start()
+
+
+def get_spot_vault_view() -> dict[str, Any]:
+    """Trading/futures equity, Virtual Spot Vault balance, total virtual
+    capital, and the most recent Profit Split (see trading/virtual_spot_vault.py)."""
+    state = _portfolio.get_state()
+    last_split = _spot_vault.get_last_split()
+    view: dict[str, Any] = {
+        'trading_equity': f'{state.current_equity:.2f} USDT',
+        'spot_vault_balance': f'{state.spot_vault_balance:.2f} USDT',
+        'total_equity': f'{state.total_equity:.2f} USDT',
+        'last_split': None,
+    }
+    if last_split:
+        spot_percent_used = last_split.get('spot_percent_used')
+        futures_percent_used = last_split.get('futures_percent_used')
+        view['last_split'] = {
+            'symbol': last_split['symbol'],
+            'profit': f"{last_split['profit']:.2f} USDT",
+            'futures_amount': f"{last_split['futures_amount']:.2f} USDT",
+            'spot_amount': f"{last_split['spot_amount']:.2f} USDT",
+            'spot_percent_used': f"{spot_percent_used:.0f}%" if spot_percent_used is not None else '-',
+            'futures_percent_used': f"{futures_percent_used:.0f}%" if futures_percent_used is not None else '-',
+            'created_at': format_timestamp(last_split['created_at']),
+        }
+    return view
+
+
+PROFIT_SPLIT_PRESETS = [(50.0, 50.0), (30.0, 70.0), (70.0, 30.0), (0.0, 100.0), (100.0, 0.0)]
+
+
+def get_profit_split_settings_view() -> dict[str, Any]:
+    """Current persistent Profit Split percentages plus quick-set presets
+    (see database/db.py::get_profit_split_settings/set_profit_split_settings)."""
+    spot_percent, futures_percent = _spot_vault.get_settings()
+    return {
+        'spot_percent': f'{spot_percent:.0f}%',
+        'futures_percent': f'{futures_percent:.0f}%',
+        'spot_percent_raw': spot_percent,
+        'futures_percent_raw': futures_percent,
+        'presets': [
+            {'label': f'{int(spot)}/{int(futures)}', 'spot': spot, 'futures': futures}
+            for spot, futures in PROFIT_SPLIT_PRESETS
+        ],
+    }
+
+
+def set_profit_split_settings(spot_percent: float, futures_percent: float) -> None:
+    """Raises ValueError (Russian message) on invalid input — see
+    database/db.py::set_profit_split_settings. Only affects trades split
+    AFTER this call; already-recorded splits are never recalculated."""
+    _spot_vault.set_settings(spot_percent, futures_percent)
 
 
 def get_paper_trading_status() -> dict[str, Any]:

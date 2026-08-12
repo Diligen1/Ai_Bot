@@ -25,6 +25,51 @@
         <div class="card-row"><span>{{ ui.labels.available_equity }}</span><strong>{{ balance.available_equity }}</strong></div>
     </section>
 
+    <section class="card spot-vault-card">
+        <div class="card-title">{{ ui.sections.spot_vault }}</div>
+        <div class="card-row"><span>{{ ui.labels.trading_futures_equity }}</span><strong>{{ spot_vault.trading_equity }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.virtual_spot_vault }}</span><strong>{{ spot_vault.spot_vault_balance }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.total_virtual_capital }}</span><strong>{{ spot_vault.total_equity }}</strong></div>
+        <div class="card-section">
+            <div class="section-title">{{ ui.labels.last_profit_split }}</div>
+            {% if spot_vault.last_split %}
+                <div class="card-row"><span>{{ ui.labels.profit }}</span><strong>{{ spot_vault.last_split.profit }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.in_futures }}</span><strong>{{ spot_vault.last_split.futures_amount }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.in_spot }}</span><strong>{{ spot_vault.last_split.spot_amount }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.used_percentages }}</span><strong>Spot {{ spot_vault.last_split.spot_percent_used }} / Futures {{ spot_vault.last_split.futures_percent_used }}</strong></div>
+            {% else %}
+                <div class="card-text">{{ ui.messages.no_profit_split_yet }}</div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card profit-split-settings-card">
+        <div class="card-title">{{ ui.sections.profit_split_settings }}</div>
+        <div class="card-row"><span>{{ ui.labels.in_spot }}</span><strong>{{ profit_split.spot_percent }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.in_futures }}</span><strong>{{ profit_split.futures_percent }}</strong></div>
+        {% if profit_split_error %}
+            <div class="card-error">{{ profit_split_error }}</div>
+        {% endif %}
+        <form method="post" action="/profit-split/settings" class="profit-split-form">
+            <label>{{ ui.labels.in_spot }} %
+                <input type="number" name="spot_percent" min="0" max="100" step="0.01" value="{{ profit_split.spot_percent_raw }}" />
+            </label>
+            <label>{{ ui.labels.in_futures }} %
+                <input type="number" name="futures_percent" min="0" max="100" step="0.01" value="{{ profit_split.futures_percent_raw }}" />
+            </label>
+            <button type="submit">{{ ui.buttons.save }}</button>
+        </form>
+        <div class="profit-split-presets">
+            {% for preset in profit_split.presets %}
+                <form method="post" action="/profit-split/settings">
+                    <input type="hidden" name="spot_percent" value="{{ preset.spot }}" />
+                    <input type="hidden" name="futures_percent" value="{{ preset.futures }}" />
+                    <button type="submit">{{ preset.label }}</button>
+                </form>
+            {% endfor %}
+        </div>
+    </section>
+
     <section class="card paper-trading-card">
         <div class="card-title">{{ ui.sections.paper_trading }}</div>
         <div class="card-row"><span>{{ ui.labels.paper_trading_status }}</span><strong>{{ paper_trading.label }}</strong></div>

@@ -197,3 +197,70 @@ def test_brain_risk_decision_none_does_not_500(monkeypatch) -> None:
     response = client.get('/brain')
     assert response.status_code == 200
     assert 'МОЗГ ИИ' in response.text
+
+
+def test_profit_split_settings_update_via_post(monkeypatch) -> None:
+    from app import server
+
+    state = {'spot': 50.0, 'futures': 50.0}
+
+    def fake_set(spot_percent: float, futures_percent: float) -> None:
+        if spot_percent < 0 or futures_percent < 0:
+            raise ValueError('Проценты не могут быть отрицательными')
+        if abs((spot_percent + futures_percent) - 100.0) > 1e-6:
+            raise ValueError('Сумма процентов Spot и Futures должна быть равна 100%')
+        state['spot'] = spot_percent
+        state['futures'] = futures_percent
+
+    def fake_view() -> dict[str, object]:
+        return {
+            'spot_percent': f"{state['spot']:.0f}%",
+            'futures_percent': f"{state['futures']:.0f}%",
+            'spot_percent_raw': state['spot'],
+            'futures_percent_raw': state['futures'],
+            'presets': [],
+        }
+
+    monkeypatch.setattr(server, 'set_profit_split_settings', fake_set)
+    monkeypatch.setattr(server, 'get_profit_split_settings_view', fake_view)
+
+    response = client.post('/profit-split/settings', data={'spot_percent': '30', 'futures_percent': '70'})
+    assert response.status_code in (200, 303)
+    assert state == {'spot': 30.0, 'futures': 70.0}
+    dashboard = client.get('/')
+    assert '30%' in dashboard.text
+    assert '70%' in dashboard.text
+
+
+def test_profit_split_invalid_sum_shows_russian_error(monkeypatch) -> None:
+    from app import server
+
+    def fake_set(spot_percent: float, futures_percent: float) -> None:
+        raise ValueError('Сумма процентов Spot и Futures должна быть равна 100%')
+
+    monkeypatch.setattr(server, 'set_profit_split_settings', fake_set)
+
+    response = client.post(
+        '/profit-split/settings',
+        data={'spot_percent': '40', 'futures_percent': '70'},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert 'Сумма процентов' in response.text
+
+
+def test_profit_split_negative_percent_shows_russian_error(monkeypatch) -> None:
+    from app import server
+
+    def fake_set(spot_percent: float, futures_percent: float) -> None:
+        raise ValueError('Проценты не могут быть отрицательными')
+
+    monkeypatch.setattr(server, 'set_profit_split_settings', fake_set)
+
+    response = client.post(
+        '/profit-split/settings',
+        data={'spot_percent': '-10', 'futures_percent': '110'},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert 'отрицательными' in response.text

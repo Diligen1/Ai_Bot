@@ -54,6 +54,7 @@ UI_STRINGS = {
         'remove': 'Удалить',
         'enable': 'ВКЛЮЧИТЬ',
         'disable': 'ВЫКЛЮЧИТЬ',
+        'save': 'Сохранить',
     },
     'placeholders': {
         'symbol': 'Например: XRPUSDT',
@@ -76,6 +77,8 @@ UI_STRINGS = {
         'risk_decision': 'РИСК-МЕНЕДЖЕР',
         'paper_trading': 'PAPER TRADING',
         'open_paper_positions': 'ОТКРЫТЫЕ PAPER ПОЗИЦИИ',
+        'spot_vault': 'СПОТ-КОПИЛКА',
+        'profit_split_settings': 'РАСПРЕДЕЛЕНИЕ ПРИБЫЛИ',
     },
     'labels': {
         'bot_status': 'Статус бота',
@@ -157,6 +160,17 @@ UI_STRINGS = {
         'setup_score': 'Балл сетапа',
         'tp1_status': 'Статус TP1',
         'opened_at': 'Открыта',
+        'trading_futures_equity': 'Trading/Futures Equity',
+        'virtual_spot_vault': 'Virtual Spot Vault',
+        'total_virtual_capital': 'Общий виртуальный капитал',
+        'last_profit_split': 'Последний Profit Split',
+        'profit': 'Profit',
+        'in_futures': 'В Futures',
+        'in_spot': 'В Spot',
+        'profit_split_spot': 'Profit Split: Spot',
+        'profit_split_futures': 'Profit Split: Futures',
+        'profit_split_percent': 'Проценты Profit Split',
+        'used_percentages': 'Использованные проценты',
     },
     'direction': {
         'LONG': 'ЛОНГ',
@@ -224,6 +238,7 @@ UI_STRINGS = {
         'no_real_account': 'Реальный Binance аккаунт не подключён.',
         'no_paper_positions': 'Открытых paper-позиций нет',
         'confirm_enable_paper_trading': 'Включить виртуальную paper-торговлю? Реальные ордера при этом никогда не отправляются.',
+        'no_profit_split_yet': 'Profit Split ещё не применялся',
     },
     'trades_filter': {
         'all': 'Все',

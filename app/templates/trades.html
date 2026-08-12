@@ -25,6 +25,8 @@
                         <th>{{ ui.labels.margin_required }}</th>
                         <th>{{ ui.labels.setup_type }}</th>
                         <th>{{ ui.labels.setup_score }}</th>
+                        <th>{{ ui.labels.profit_split_spot }}</th>
+                        <th>{{ ui.labels.profit_split_futures }}</th>
                         <th>Результат</th>
                         <th>{{ ui.labels.opened }}</th>
                         <th>{{ ui.labels.closed }}</th>
@@ -45,6 +47,8 @@
                             <td>{{ trade.margin_used or '-' }}</td>
                             <td>{{ trade.entry_reason | translate_enum(ui.setup_type, '-') if trade.source == 'paper' else '-' }}</td>
                             <td>{{ trade.setup_score or '-' }}</td>
+                            <td>{{ trade.profit_split_spot or '-' }}</td>
+                            <td>{{ trade.profit_split_futures or '-' }}</td>
                             <td>{{ trade.exit_reason or '-' }}</td>
                             <td>{{ trade.opened_at or '-' }}</td>
                             <td>{{ trade.closed_at or '-' }}</td>

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest -q tests/test_virtual_spot_vault.py tests/test_virtual_portfolio.py tests/test_paper_trading_engine.py tests/test_database_manager.py tests/test_risk_manager.py tests/test_ui_routes.py)",
+      "Bash(python -m pytest -q tests/test_profit_split_settings.py tests/test_virtual_spot_vault.py tests/test_virtual_portfolio.py tests/test_paper_trading_engine.py tests/test_database_manager.py tests/test_risk_manager.py tests/test_ui_routes.py)"
+    ]
+  }
+}
