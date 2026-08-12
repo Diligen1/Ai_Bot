@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="card simulation-banner">
+    <strong>{{ ui.messages.mode_simulation }}</strong>
+    <span>{{ ui.messages.no_real_account }}</span>
+</div>
 <div class="overview-grid">
     <section class="card status-card">
         <div class="card-title">{{ ui.sections.market }}</div>
@@ -13,9 +17,21 @@
 
     <section class="card capital-card">
         <div class="card-title">{{ ui.sections.capital }}</div>
-        <div class="card-row"><span>{{ ui.labels.futures_balance }}</span><strong>{{ balance.futures_balance }}</strong></div>
-        <div class="card-row"><span>{{ ui.labels.spot_vault }}</span><strong>{{ balance.spot_vault }}</strong></div>
-        <div class="card-row"><span>{{ ui.labels.total_equity }}</span><strong>{{ balance.total_equity }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.starting_balance }}</span><strong>{{ balance.starting_balance }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.current_equity }}</span><strong>{{ balance.current_equity }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.realized_pnl }}</span><strong>{{ balance.realized_pnl }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.unrealized_pnl }}</span><strong>{{ balance.unrealized_pnl }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.reserved_margin }}</span><strong>{{ balance.reserved_margin }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.available_equity }}</span><strong>{{ balance.available_equity }}</strong></div>
+    </section>
+
+    <section class="card paper-trading-card">
+        <div class="card-title">{{ ui.sections.paper_trading }}</div>
+        <div class="card-row"><span>{{ ui.labels.paper_trading_status }}</span><strong>{{ paper_trading.label }}</strong></div>
+        <form method="post" action="/paper-trading/toggle" {% if not paper_trading.enabled %}onsubmit="return confirm('{{ ui.messages.confirm_enable_paper_trading }}')"{% endif %}>
+            <input type="hidden" name="enabled" value="{{ 'false' if paper_trading.enabled else 'true' }}" />
+            <button type="submit">{{ ui.buttons.disable if paper_trading.enabled else ui.buttons.enable }}</button>
+        </form>
     </section>
 
     <section class="card today-card">
@@ -35,6 +51,7 @@
         <div class="card-row"><span>{{ ui.labels.daily_drawdown_limit }}</span><strong>{{ risk_control.daily_drawdown_limit }}</strong></div>
         <div class="card-row"><span>{{ ui.labels.weekly_drawdown_limit }}</span><strong>{{ risk_control.weekly_drawdown_limit }}</strong></div>
         <div class="card-row"><span>{{ ui.labels.consecutive_losses }}</span><strong>{{ risk_control.consecutive_losses }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.open_positions_count }}</span><strong>{{ risk_control.open_positions_count }}</strong></div>
         <div class="card-row"><span>{{ ui.labels.kill_switch }}</span><strong>{{ ui.status[risk_control.kill_switch] or risk_control.kill_switch }}</strong></div>
     </section>
 
@@ -67,6 +84,54 @@
             </div>
         {% else %}
             <div class="card-text">{{ ui.messages.no_open_positions }}</div>
+        {% endif %}
+    </section>
+
+    <section class="card wide-card">
+        <div class="card-title">{{ ui.sections.open_paper_positions }}</div>
+        {% if open_paper_positions %}
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>{{ ui.labels.symbol }}</th>
+                            <th>{{ ui.labels.direction }}</th>
+                            <th>{{ ui.labels.entry }}</th>
+                            <th>{{ ui.labels.current_price }}</th>
+                            <th>{{ ui.labels.quantity }}</th>
+                            <th>{{ ui.labels.margin_required }}</th>
+                            <th>{{ ui.labels.unrealized_pnl }}</th>
+                            <th>{{ ui.labels.stop_loss }}</th>
+                            <th>{{ ui.labels.take_profit_1 }}</th>
+                            <th>{{ ui.labels.tp1_status }}</th>
+                            <th>{{ ui.labels.take_profit_2 }}</th>
+                            <th>{{ ui.labels.setup_score }}</th>
+                            <th>{{ ui.labels.opened_at }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for position in open_paper_positions %}
+                            <tr>
+                                <td>{{ position.symbol }}</td>
+                                <td class="trade-side {{ position.direction | lower }}">{{ ui.direction[position.direction] or position.direction }} {{ position.leverage }}</td>
+                                <td>{{ position.entry_price }}</td>
+                                <td>{{ position.current_price }}</td>
+                                <td>{{ position.quantity }}</td>
+                                <td>{{ position.margin_used }}</td>
+                                <td class="profit-cell {{ position.unrealized_pnl_sign }}">{{ position.unrealized_pnl }}</td>
+                                <td>{{ position.stop_loss }}</td>
+                                <td>{{ position.take_profit_1 }}</td>
+                                <td>{{ position.tp1_hit }}</td>
+                                <td>{{ position.take_profit_2 }}</td>
+                                <td>{{ position.setup_score }}</td>
+                                <td>{{ position.opened_at }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="card-text">{{ ui.messages.no_paper_positions }}</div>
         {% endif %}
     </section>
 </div>

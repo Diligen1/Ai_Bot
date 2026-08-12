@@ -130,16 +130,23 @@ class SetupQualityFilter:
             rejected = True
             reasons.append('INSUFFICIENT_RR_TP2')
 
-        if analysis.get('market_regime') == 'HIGH_VOLATILITY' and analysis.get('last_price') is not None:
+        volatility = analysis.get('analysis', {}).get('15m', {}).get('volatility')
+        if volatility == 'EXTREME' or analysis.get('market_regime') == 'HIGH_VOLATILITY':
             rejected = True
             reasons.append('EXTREME_VOLATILITY')
 
-        if direction == 'LONG' and current_price > entry_high + atr * settings.MAX_PRICE_DISTANCE_ATR:
-            rejected = True
-            reasons.append('MISSED_ENTRY')
-        if direction == 'SHORT' and current_price < entry_low - atr * settings.MAX_PRICE_DISTANCE_ATR:
-            rejected = True
-            reasons.append('MISSED_ENTRY')
+        if direction == 'LONG':
+            if current_price > entry_high + atr * settings.MAX_PRICE_DISTANCE_ATR:
+                rejected = True
+                reasons.append('MISSED_ENTRY')
+            if current_price > entry_high and current_price <= entry_high + atr * settings.MAX_PRICE_DISTANCE_ATR:
+                reasons.append('ENTRY_PAST')
+        if direction == 'SHORT':
+            if current_price < entry_low - atr * settings.MAX_PRICE_DISTANCE_ATR:
+                rejected = True
+                reasons.append('MISSED_ENTRY')
+            if current_price < entry_low and current_price >= entry_low - atr * settings.MAX_PRICE_DISTANCE_ATR:
+                reasons.append('ENTRY_PAST')
 
         if analysis.get('status') != 'LIVE':
             rejected = True
@@ -158,6 +165,7 @@ class TradeSetupEngine:
     STATUS_INVALIDATED = 'INVALIDATED'
     STATUS_EXPIRED = 'EXPIRED'
     STATUS_REJECTED = 'REJECTED'
+    STATUS_MISSED_ENTRY = 'MISSED_ENTRY'
 
     SETUP_TREND_PULLBACK = 'TREND_PULLBACK'
     SETUP_BREAKOUT_RETEST = 'BREAKOUT_RETEST'
@@ -199,6 +207,7 @@ class TradeSetupEngine:
             'expires_at': expires_at,
             'reasons': [],
             'rejection_reasons': [],
+            'risk_factors': [],
             'analysis_snapshot': self._build_snapshot(analysis, symbol_data),
         }
 
@@ -290,10 +299,14 @@ class TradeSetupEngine:
         candidate['created_at'] = created_at
         candidate['expires_at'] = expires_at
         candidate['analysis_snapshot'] = setup_result['analysis_snapshot']
+        candidate['risk_factors'] = self._identify_risk_factors(candidate, analysis, atr)
 
         quality_result = self.quality_filter.validate(candidate, analysis, last_price, atr)
         if not quality_result['valid']:
-            candidate['status'] = self.STATUS_REJECTED
+            status = self.STATUS_REJECTED
+            if 'MISSED_ENTRY' in quality_result['reasons']:
+                status = self.STATUS_MISSED_ENTRY
+            candidate['status'] = status
             candidate['rejection_reasons'] = quality_result['reasons']
             candidate['reasons'] = ['Сетап отклонён'] + quality_result['reasons']
             candidate['setup_score'] = self._calculate_setup_score(candidate, analysis, atr)
@@ -496,6 +509,7 @@ class TradeSetupEngine:
             'risk_reward_tp2': round(rr_tp2, 2),
             'invalidation_level': round(invalidation, 6),
             'status': self.STATUS_WAITING,
+            'risk_factors': [],
         }
 
     def _calculate_setup_score(self, setup: dict[str, Any], analysis: dict[str, Any], atr: float) -> int:
@@ -536,14 +550,22 @@ class TradeSetupEngine:
         if datetime.now(timezone.utc) > datetime.fromisoformat(setup['expires_at']):
             return self.STATUS_EXPIRED
         if setup['direction'] == 'LONG':
+            if current_price <= setup['invalidation_level']:
+                return self.STATUS_INVALIDATED
             if setup['entry_zone_low'] <= current_price <= setup['entry_zone_high']:
                 return self.STATUS_READY
             if current_price > setup['entry_zone_high']:
+                if current_price > setup['entry_zone_high'] + atr * settings.MAX_PRICE_DISTANCE_ATR:
+                    return self.STATUS_MISSED_ENTRY
                 return self.STATUS_WAITING
         else:
+            if current_price >= setup['invalidation_level']:
+                return self.STATUS_INVALIDATED
             if setup['entry_zone_low'] <= current_price <= setup['entry_zone_high']:
                 return self.STATUS_READY
             if current_price < setup['entry_zone_low']:
+                if current_price < setup['entry_zone_low'] - atr * settings.MAX_PRICE_DISTANCE_ATR:
+                    return self.STATUS_MISSED_ENTRY
                 return self.STATUS_WAITING
         return self.STATUS_REJECTED
 
@@ -557,3 +579,33 @@ class TradeSetupEngine:
         if setup['risk_reward_tp2'] >= settings.MINIMUM_RR_TP2:
             reasons.append(f'RR2 {setup["risk_reward_tp2"]}:1')
         return reasons
+
+    def _identify_risk_factors(self, setup: dict[str, Any], analysis: dict[str, Any], atr: float) -> list[str]:
+        factors: list[str] = []
+        width = setup['entry_zone_high'] - setup['entry_zone_low']
+        if width >= atr * 2.0:
+            factors.append('Широкая зона входа')
+        elif width <= atr * 0.4:
+            factors.append('Узкая зона входа')
+
+        distance_to_invalidation = (
+            setup['invalidation_level'] - setup['entry_zone_high']
+            if setup['direction'] == 'LONG'
+            else setup['entry_zone_low'] - setup['invalidation_level']
+        )
+        if distance_to_invalidation <= atr * 1.5:
+            factors.append('Близкая инвалидация')
+
+        volatility = analysis.get('analysis', {}).get('15m', {}).get('volatility')
+        if volatility in ('HIGH', 'EXTREME') or analysis.get('market_regime') == 'HIGH_VOLATILITY':
+            factors.append('Высокая волатильность')
+
+        if setup['risk_reward_tp1'] < settings.MINIMUM_RR_TP1 * 1.2:
+            factors.append('Низкий RR TP1')
+        if setup['risk_reward_tp2'] < settings.MINIMUM_RR_TP2 * 1.2:
+            factors.append('Низкий RR TP2')
+
+        if analysis.get('timeframe_alignment') in ('LONG_BIAS', 'SHORT_BIAS'):
+            factors.append('Слабая согласованность таймфреймов')
+
+        return factors

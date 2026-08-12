@@ -115,3 +115,85 @@ def test_brain_missing_analysis_does_not_500(monkeypatch) -> None:
     assert response.status_code == 200
     assert 'TEST_UNKNOWN_VALUE' in response.text
     assert 'МОЗГ ИИ' in response.text
+
+
+def test_brain_missing_risk_decision_key_does_not_500(monkeypatch) -> None:
+    from app import server
+
+    def fake_brain_view(symbol: str | None = None) -> dict[str, object]:
+        return {
+            'symbol': 'BTCUSDT', 'current_price': '-', 'market_regime': 'UNKNOWN',
+            'direction': 'NEUTRAL', 'technical_score': '-', 'confidence': 'UNKNOWN',
+            'timeframe_alignment': 'UNKNOWN', 'trade_candidate': None,
+            'reasons': [], 'block_reasons': [],
+            'analysis_4h': {'trend': None, 'indicators': {}},
+            'analysis_1h': {'trend': None, 'indicators': {}},
+            'analysis_15m': {'trend': None, 'indicators': {}},
+            'volume_current': '-', 'volume_average': '-', 'volume_ratio': '-',
+            'atr': '-', 'atr_percent': '-',
+            # no 'risk_decision' key at all (old-format data)
+        }
+
+    monkeypatch.setattr(server, 'get_brain_view', fake_brain_view)
+    monkeypatch.setattr(server, 'get_market_symbols', lambda: ['BTCUSDT'])
+    response = client.get('/brain')
+    assert response.status_code == 200
+    assert 'МОЗГ ИИ' in response.text
+
+
+def test_dashboard_shows_paper_trading_disabled_by_default() -> None:
+    response = client.get('/')
+    assert response.status_code == 200
+    assert 'PAPER TRADING' in response.text
+    assert 'ВЫКЛ' in response.text
+
+
+def test_paper_trading_toggle_enable_and_disable(monkeypatch) -> None:
+    from app import server
+
+    state = {'enabled': False}
+    monkeypatch.setattr(server, 'set_paper_trading_enabled', lambda value: state.__setitem__('enabled', value))
+    monkeypatch.setattr(server, 'get_paper_trading_status', lambda: {'enabled': state['enabled'], 'label': 'ВКЛ' if state['enabled'] else 'ВЫКЛ'})
+
+    response = client.post('/paper-trading/toggle', data={'enabled': 'true'})
+    assert response.status_code in (200, 303)
+    assert state['enabled'] is True
+    dashboard = client.get('/')
+    assert 'ВКЛ' in dashboard.text
+
+    response = client.post('/paper-trading/toggle', data={'enabled': 'false'})
+    assert response.status_code in (200, 303)
+    assert state['enabled'] is False
+    dashboard = client.get('/')
+    assert 'ВЫКЛ' in dashboard.text
+
+
+def test_trades_source_filter_variants_return_200() -> None:
+    for url in ('/trades', '/trades?source=paper', '/trades?source=seed', '/trades?source=bogus'):
+        response = client.get(url)
+        assert response.status_code == 200
+        assert 'Сделки' in response.text
+
+
+def test_brain_risk_decision_none_does_not_500(monkeypatch) -> None:
+    from app import server
+
+    def fake_brain_view(symbol: str | None = None) -> dict[str, object]:
+        return {
+            'symbol': 'BTCUSDT', 'current_price': '-', 'market_regime': 'UNKNOWN',
+            'direction': 'NEUTRAL', 'technical_score': '-', 'confidence': 'UNKNOWN',
+            'timeframe_alignment': 'UNKNOWN', 'trade_candidate': None,
+            'reasons': [], 'block_reasons': [],
+            'analysis_4h': {'trend': None, 'indicators': {}},
+            'analysis_1h': {'trend': None, 'indicators': {}},
+            'analysis_15m': {'trend': None, 'indicators': {}},
+            'volume_current': '-', 'volume_average': '-', 'volume_ratio': '-',
+            'atr': '-', 'atr_percent': '-',
+            'risk_decision': None,
+        }
+
+    monkeypatch.setattr(server, 'get_brain_view', fake_brain_view)
+    monkeypatch.setattr(server, 'get_market_symbols', lambda: ['BTCUSDT'])
+    response = client.get('/brain')
+    assert response.status_code == 200
+    assert 'МОЗГ ИИ' in response.text

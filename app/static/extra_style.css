@@ -1,4 +1,41 @@
 /* дополнительные стили для русской версии интерфейса */
+.simulation-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.1);
+    color: #bfdbfe;
+}
+.simulation-banner strong {
+    letter-spacing: 0.08em;
+}
+.risk-decision-card.approved {
+    border-color: rgba(34, 197, 94, 0.4);
+}
+.risk-decision-card.rejected {
+    border-color: rgba(248, 113, 113, 0.4);
+}
+.trades-filter {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.trades-filter a {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+.trades-filter a.active {
+    background: rgba(59, 130, 246, 0.16);
+    color: #bfdbfe;
+    border-color: rgba(59, 130, 246, 0.4);
+}
 .badge {
     display: inline-flex;
     align-items: center;

@@ -65,6 +65,8 @@ class DatabaseManager:
             )
             """
         )
+        self._migrate_trades_source_column()
+        self._migrate_trades_paper_columns()
         self._execute(
             """
             CREATE TABLE IF NOT EXISTS signals (
@@ -140,6 +142,48 @@ class DatabaseManager:
             )
             """
         )
+        self._migrate_setups_execution_status_column()
+        self._execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                started_at TEXT NOT NULL,
+                starting_equity REAL,
+                ended_at TEXT
+            )
+            """
+        )
+        self._execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_positions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER,
+                symbol TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                status TEXT NOT NULL,
+                entry_price REAL,
+                planned_entry REAL,
+                quantity_initial REAL,
+                quantity_remaining REAL,
+                margin_used REAL,
+                leverage REAL,
+                stop_loss REAL,
+                take_profit_1 REAL,
+                take_profit_2 REAL,
+                tp1_hit INTEGER DEFAULT 0,
+                tp2_hit INTEGER DEFAULT 0,
+                realized_pnl REAL DEFAULT 0,
+                fees_total REAL DEFAULT 0,
+                opened_at TEXT,
+                closed_at TEXT,
+                setup_id INTEGER,
+                strategy_version TEXT,
+                setup_snapshot TEXT,
+                risk_decision_snapshot TEXT,
+                source TEXT DEFAULT 'paper'
+            )
+            """
+        )
         if first_run:
             self._initialize_default_whitelist()
         else:
@@ -150,6 +194,41 @@ class DatabaseManager:
                 else:
                     # Existing database with empty whitelist should remain empty.
                     self.set_setting('default_whitelist_initialized', 'true')
+
+    def _migrate_trades_source_column(self) -> None:
+        """Ensure trades.source exists and legacy/pre-migration rows are tagged 'seed'.
+
+        Rows inserted before this migration (or by any caller that doesn't pass
+        `source`) have no way of self-identifying as demo/seed data, so any row
+        left without a source after the column exists is treated as historical
+        seed data and must not be mixed into paper-trading equity calculations.
+        """
+        cursor = self._execute("PRAGMA table_info(trades)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'source' not in columns:
+            self._execute("ALTER TABLE trades ADD COLUMN source TEXT")
+        self._execute("UPDATE trades SET source = 'seed' WHERE source IS NULL")
+
+    def _migrate_trades_paper_columns(self) -> None:
+        """Link trades rows back to the PaperTradingEngine position/setup that produced them."""
+        cursor = self._execute("PRAGMA table_info(trades)")
+        columns = [row[1] for row in cursor.fetchall()]
+        for column, ddl_type in (
+            ('position_id', 'INTEGER'),
+            ('setup_id', 'INTEGER'),
+            ('strategy_version', 'TEXT'),
+            ('setup_score', 'INTEGER'),
+        ):
+            if column not in columns:
+                self._execute(f"ALTER TABLE trades ADD COLUMN {column} {ddl_type}")
+
+    def _migrate_setups_execution_status_column(self) -> None:
+        """Idempotency marker: a setup flips to 'EXECUTED' the moment PaperTradingEngine fills it."""
+        cursor = self._execute("PRAGMA table_info(setups)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'execution_status' not in columns:
+            self._execute("ALTER TABLE setups ADD COLUMN execution_status TEXT")
+        self._execute("UPDATE setups SET execution_status = 'PENDING' WHERE execution_status IS NULL")
 
     def add_trade(
         self,
@@ -176,6 +255,11 @@ class DatabaseManager:
         exit_reason: str | None = None,
         opened_at: str | None = None,
         closed_at: str | None = None,
+        source: str = 'paper',
+        position_id: int | None = None,
+        setup_id: int | None = None,
+        strategy_version: str | None = None,
+        setup_score: int | None = None,
     ) -> int:
         cursor = self._execute(
             """
@@ -183,8 +267,9 @@ class DatabaseManager:
                 symbol, side, status, entry_price, exit_price, quantity, leverage,
                 margin_used, stop_loss, take_profit, realized_pnl, net_pnl,
                 fees, funding, risk_reward, signal_score, ai_score, historical_score,
-                market_regime, entry_reason, exit_reason, opened_at, closed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                market_regime, entry_reason, exit_reason, opened_at, closed_at, source,
+                position_id, setup_id, strategy_version, setup_score
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 symbol,
@@ -210,6 +295,11 @@ class DatabaseManager:
                 exit_reason,
                 opened_at,
                 closed_at,
+                source,
+                position_id,
+                setup_id,
+                strategy_version,
+                setup_score,
             ),
         )
         return cursor.lastrowid
@@ -246,16 +336,28 @@ class DatabaseManager:
             ),
         )
 
-    def get_open_trades(self) -> list[sqlite3.Row]:
-        cursor = self._execute(
-            "SELECT * FROM trades WHERE status != 'closed' ORDER BY opened_at DESC"
-        )
+    def get_open_trades(self, source: str | None = None) -> list[sqlite3.Row]:
+        if source is None:
+            cursor = self._execute(
+                "SELECT * FROM trades WHERE status != 'closed' ORDER BY opened_at DESC"
+            )
+        else:
+            cursor = self._execute(
+                "SELECT * FROM trades WHERE status != 'closed' AND source = ? ORDER BY opened_at DESC",
+                (source,),
+            )
         return cursor.fetchall()
 
-    def get_trade_history(self) -> list[sqlite3.Row]:
-        cursor = self._execute(
-            "SELECT * FROM trades WHERE status = 'closed' ORDER BY closed_at DESC"
-        )
+    def get_trade_history(self, source: str | None = None) -> list[sqlite3.Row]:
+        if source is None:
+            cursor = self._execute(
+                "SELECT * FROM trades WHERE status = 'closed' ORDER BY closed_at DESC"
+            )
+        else:
+            cursor = self._execute(
+                "SELECT * FROM trades WHERE status = 'closed' AND source = ? ORDER BY closed_at DESC",
+                (source,),
+            )
         return cursor.fetchall()
 
     def add_signal(
@@ -270,7 +372,7 @@ class DatabaseManager:
         reason: str | None = None,
         created_at: str | None = None,
     ) -> int:
-        created_at = created_at or datetime.utcnow().isoformat()
+        created_at = created_at or datetime.now(timezone.utc).isoformat()
         cursor = self._execute(
             """
             INSERT INTO signals (
@@ -320,6 +422,7 @@ class DatabaseManager:
         expires_at: str | None = None,
         rejection_reasons: str | None = None,
         analysis_snapshot: str | None = None,
+        execution_status: str = 'PENDING',
     ) -> int:
         cursor = self._execute(
             """
@@ -328,8 +431,8 @@ class DatabaseManager:
                 stop_loss, take_profit_1, take_profit_2, risk_reward_tp1,
                 risk_reward_tp2, invalidation_level, confidence, technical_score,
                 setup_score, status, created_at, expires_at, rejection_reasons,
-                analysis_snapshot
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                analysis_snapshot, execution_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 symbol,
@@ -351,6 +454,7 @@ class DatabaseManager:
                 expires_at,
                 rejection_reasons,
                 analysis_snapshot,
+                execution_status,
             ),
         )
         return cursor.lastrowid
@@ -361,6 +465,12 @@ class DatabaseManager:
             (limit,),
         )
         return cursor.fetchall()
+
+    def mark_setup_executed(self, setup_id: int) -> None:
+        self._execute(
+            "UPDATE setups SET execution_status = 'EXECUTED' WHERE id = ?",
+            (setup_id,),
+        )
 
     def get_setting(self, key: str) -> str | None:
         cursor = self._execute(
@@ -375,6 +485,18 @@ class DatabaseManager:
             "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, value),
         )
+
+    def get_kill_switch(self) -> bool:
+        return self.get_setting('risk_kill_switch') == 'true'
+
+    def set_kill_switch(self, value: bool) -> None:
+        self.set_setting('risk_kill_switch', 'true' if value else 'false')
+
+    def get_paper_trading_enabled(self) -> bool:
+        return self.get_setting('paper_trading_enabled') == 'true'
+
+    def set_paper_trading_enabled(self, value: bool) -> None:
+        self.set_setting('paper_trading_enabled', 'true' if value else 'false')
 
     def add_whitelist_symbol(self, symbol: str) -> int:
         normalized = symbol.strip().upper()
@@ -411,7 +533,7 @@ class DatabaseManager:
         open_trades = self.get_open_trades()
         closed_trades = self.get_trade_history()
         total_equity = 500.0 + sum(trade['net_pnl'] or 0.0 for trade in closed_trades)
-        today = datetime.utcnow().date().isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
         todays_trades = [trade for trade in closed_trades if trade['closed_at'] and trade['closed_at'].startswith(today)]
         trades_count = len(todays_trades)
         pnl = sum(trade['net_pnl'] or 0.0 for trade in todays_trades)
@@ -430,8 +552,8 @@ class DatabaseManager:
             'open_positions': [dict(trade) for trade in open_trades],
         }
 
-    def get_analytics_stats(self) -> dict[str, Any]:
-        trades = self.get_trade_history()
+    def get_analytics_stats(self, source: str | None = None) -> dict[str, Any]:
+        trades = self.get_trade_history(source=source)
         total_trades = len(trades)
         wins = sum(1 for trade in trades if trade['net_pnl'] is not None and trade['net_pnl'] > 0)
         losses = sum(1 for trade in trades if trade['net_pnl'] is not None and trade['net_pnl'] <= 0)
@@ -460,3 +582,114 @@ class DatabaseManager:
             'max_drawdown': f'{max_drawdown_percent:.2f}%',
             'net_profit': f'{net_profit:.2f} USDT',
         }
+
+    # -- Paper Trading Engine: sessions -------------------------------------
+
+    def get_or_create_active_session(self, starting_equity: float, started_at: str | None = None) -> int:
+        cursor = self._execute(
+            "SELECT id FROM paper_sessions WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1"
+        )
+        row = cursor.fetchone()
+        if row:
+            return row['id']
+        started_at = started_at or datetime.now(timezone.utc).isoformat()
+        cursor = self._execute(
+            "INSERT INTO paper_sessions (started_at, starting_equity, ended_at) VALUES (?, ?, NULL)",
+            (started_at, starting_equity),
+        )
+        return cursor.lastrowid
+
+    def end_session(self, session_id: int, ended_at: str | None = None) -> None:
+        ended_at = ended_at or datetime.now(timezone.utc).isoformat()
+        self._execute(
+            "UPDATE paper_sessions SET ended_at = ? WHERE id = ?",
+            (ended_at, session_id),
+        )
+
+    # -- Paper Trading Engine: live positions --------------------------------
+
+    def add_paper_position(
+        self,
+        session_id: int | None,
+        symbol: str,
+        direction: str,
+        status: str,
+        entry_price: float,
+        planned_entry: float | None,
+        quantity_initial: float,
+        quantity_remaining: float,
+        margin_used: float,
+        leverage: float,
+        stop_loss: float,
+        take_profit_1: float,
+        take_profit_2: float,
+        opened_at: str,
+        setup_id: int | None = None,
+        strategy_version: str | None = None,
+        setup_snapshot: str | None = None,
+        risk_decision_snapshot: str | None = None,
+        fees_total: float = 0.0,
+    ) -> int:
+        cursor = self._execute(
+            """
+            INSERT INTO paper_positions (
+                session_id, symbol, direction, status, entry_price, planned_entry,
+                quantity_initial, quantity_remaining, margin_used, leverage,
+                stop_loss, take_profit_1, take_profit_2, tp1_hit, tp2_hit,
+                realized_pnl, fees_total, opened_at, closed_at, setup_id,
+                strategy_version, setup_snapshot, risk_decision_snapshot, source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, NULL, ?, ?, ?, ?, 'paper')
+            """,
+            (
+                session_id,
+                symbol,
+                direction,
+                status,
+                entry_price,
+                planned_entry,
+                quantity_initial,
+                quantity_remaining,
+                margin_used,
+                leverage,
+                stop_loss,
+                take_profit_1,
+                take_profit_2,
+                fees_total,
+                opened_at,
+                setup_id,
+                strategy_version,
+                setup_snapshot,
+                risk_decision_snapshot,
+            ),
+        )
+        return cursor.lastrowid
+
+    def update_paper_position(self, position_id: int, **fields: Any) -> None:
+        if not fields:
+            return
+        allowed = {
+            'status', 'quantity_remaining', 'tp1_hit', 'tp2_hit',
+            'realized_pnl', 'fees_total', 'closed_at',
+        }
+        unknown = set(fields) - allowed
+        if unknown:
+            raise ValueError(f"Unknown paper_positions fields: {sorted(unknown)}")
+        set_clause = ', '.join(f"{key} = ?" for key in fields)
+        params = list(fields.values()) + [position_id]
+        self._execute(f"UPDATE paper_positions SET {set_clause} WHERE id = ?", tuple(params))
+
+    def get_open_paper_positions(self, symbol: str | None = None) -> list[sqlite3.Row]:
+        if symbol is None:
+            cursor = self._execute(
+                "SELECT * FROM paper_positions WHERE status IN ('OPEN', 'PARTIALLY_CLOSED') ORDER BY opened_at DESC"
+            )
+        else:
+            cursor = self._execute(
+                "SELECT * FROM paper_positions WHERE status IN ('OPEN', 'PARTIALLY_CLOSED') AND symbol = ? ORDER BY opened_at DESC",
+                (symbol,),
+            )
+        return cursor.fetchall()
+
+    def get_paper_position(self, position_id: int) -> sqlite3.Row | None:
+        cursor = self._execute("SELECT * FROM paper_positions WHERE id = ?", (position_id,))
+        return cursor.fetchone()

@@ -3,6 +3,7 @@
 {% block content %}
 <div class="market-grid">
     {% for symbol, data in market_data.items() %}
+        {% set setup = data.get('setup') or {'setup_type': 'NO_SETUP', 'status': 'REJECTED', 'direction': 'NEUTRAL', 'setup_score': 0} %}
         <section class="card market-card">
             <div class="market-header">
                 <div class="card-title">{{ symbol }}</div>
@@ -35,11 +36,11 @@
             </div>
             <div class="card-section">
                 <div class="section-title">{{ ui.labels.setup }}</div>
-                <div class="card-row"><span>{{ ui.labels.setup }}</span><strong>{{ 'ЕСТЬ' if data.setup.setup_type != 'NO_SETUP' and data.setup.status != 'REJECTED' else 'НЕТ' }}</strong></div>
-                <div class="card-row"><span>{{ ui.labels.setup_type }}</span><strong>{{ data.setup.setup_type | translate_enum(ui.setup_type, '-') }}</strong></div>
-                <div class="card-row"><span>{{ ui.labels.direction }}</span><strong>{{ data.setup.direction | translate_enum(ui.direction, '-') }}</strong></div>
-                <div class="card-row"><span>{{ ui.labels.setup_score }}</span><strong>{{ data.setup.setup_score or '-' }}</strong></div>
-                <div class="card-row"><span>{{ ui.labels.setup_status }}</span><strong>{{ data.setup.status | translate_enum(ui.setup_status, '-') }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.setup }}</span><strong>{{ 'ЕСТЬ' if setup.setup_type != 'NO_SETUP' and setup.status != 'REJECTED' else 'НЕТ' }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.setup_type }}</span><strong>{{ setup.setup_type | translate_enum(ui.setup_type, '-') }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.direction }}</span><strong>{{ setup.direction | translate_enum(ui.direction, '-') }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.setup_score }}</span><strong>{{ setup.setup_score or '-' }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.setup_status }}</span><strong>{{ setup.status | translate_enum(ui.setup_status, '-') }}</strong></div>
             </div>
             <div class="card-section">
                 <div class="section-title">СТАКАН</div>

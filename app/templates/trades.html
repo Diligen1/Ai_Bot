@@ -3,6 +3,11 @@
 {% block content %}
 <section class="card single-card">
     <div class="card-title">{{ ui.sections.trades }}</div>
+    <div class="trades-filter">
+        <a href="/trades" class="{{ 'active' if selected_source == 'all' }}">{{ ui.trades_filter.all }}</a>
+        <a href="/trades?source=paper" class="{{ 'active' if selected_source == 'paper' }}">{{ ui.trades_filter.paper }}</a>
+        <a href="/trades?source=seed" class="{{ 'active' if selected_source == 'seed' }}">{{ ui.trades_filter.seed }}</a>
+    </div>
     {% if trades_history %}
         <div class="table-wrap">
             <table class="data-table">
@@ -15,6 +20,12 @@
                         <th>{{ ui.labels.entry }}</th>
                         <th>{{ ui.labels.exit }}</th>
                         <th>{{ ui.labels.net_pnl }}</th>
+                        <th>Комиссии</th>
+                        <th>{{ ui.labels.leverage }}</th>
+                        <th>{{ ui.labels.margin_required }}</th>
+                        <th>{{ ui.labels.setup_type }}</th>
+                        <th>{{ ui.labels.setup_score }}</th>
+                        <th>Результат</th>
                         <th>{{ ui.labels.opened }}</th>
                         <th>{{ ui.labels.closed }}</th>
                     </tr>
@@ -29,6 +40,12 @@
                             <td>{{ trade.entry_price or '-' }}</td>
                             <td>{{ trade.exit_price or '-' }}</td>
                             <td class="profit-cell {% if trade.net_pnl is not none and trade.net_pnl|float > 0 %}positive{% elif trade.net_pnl is not none and trade.net_pnl|float < 0 %}negative{% endif %}">{{ trade.net_pnl or '-' }}</td>
+                            <td>{{ trade.fees or '-' }}</td>
+                            <td>{{ trade.leverage or '-' }}</td>
+                            <td>{{ trade.margin_used or '-' }}</td>
+                            <td>{{ trade.entry_reason | translate_enum(ui.setup_type, '-') if trade.source == 'paper' else '-' }}</td>
+                            <td>{{ trade.setup_score or '-' }}</td>
+                            <td>{{ trade.exit_reason or '-' }}</td>
                             <td>{{ trade.opened_at or '-' }}</td>
                             <td>{{ trade.closed_at or '-' }}</td>
                         </tr>

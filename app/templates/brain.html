@@ -69,25 +69,45 @@
 
     <section class="card wide-card">
         <div class="card-title">{{ ui.sections.trade_plan }}</div>
-        {% if brain.setup.setup_type != 'NO_SETUP' and brain.setup.status != 'REJECTED' %}
-            <div class="card-row"><span>{{ ui.labels.setup_status }}</span><strong>{{ brain.setup.status | translate_enum(ui.setup_status, '-') }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.setup_type }}</span><strong>{{ brain.setup.setup_type | translate_enum(ui.setup_type, '-') }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.direction }}</span><strong>{{ brain.setup.direction | translate_enum(ui.direction, '-') }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.entry_zone }}</span><strong>{{ brain.setup.entry_zone_low }} – {{ brain.setup.entry_zone_high }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.stop_loss }}</span><strong>{{ brain.setup.stop_loss }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.take_profit_1 }}</span><strong>{{ brain.setup.take_profit_1 }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.take_profit_2 }}</span><strong>{{ brain.setup.take_profit_2 }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.risk_reward }}</span><strong>{{ brain.setup.risk_reward_tp1 }} / {{ brain.setup.risk_reward_tp2 }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.setup_score }}</span><strong>{{ brain.setup.setup_score }}</strong></div>
-            <div class="card-row"><span>{{ ui.labels.invalidation }}</span><strong>{{ brain.setup.invalidation_level }}</strong></div>
+        {% set setup = brain.get('setup') or {'setup_type': 'NO_SETUP', 'status': 'REJECTED', 'reasons': [], 'rejection_reasons': []} %}
+        {% if setup.setup_type != 'NO_SETUP' and setup.status != 'REJECTED' %}
+            <div class="card-row"><span>{{ ui.labels.setup_status }}</span><strong>{{ setup.status | translate_enum(ui.setup_status, '-') }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.setup_type }}</span><strong>{{ setup.setup_type | translate_enum(ui.setup_type, '-') }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.direction }}</span><strong>{{ setup.direction | translate_enum(ui.direction, '-') }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.entry_zone }}</span><strong>{{ setup.entry_zone_low }} – {{ setup.entry_zone_high }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.stop_loss }}</span><strong>{{ setup.stop_loss }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.take_profit_1 }}</span><strong>{{ setup.take_profit_1 }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.take_profit_2 }}</span><strong>{{ setup.take_profit_2 }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.risk_reward }}</span><strong>{{ setup.risk_reward_tp1 }} / {{ setup.risk_reward_tp2 }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.setup_score }}</span><strong>{{ setup.setup_score }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.invalidation }}</span><strong>{{ setup.invalidation_level }}</strong></div>
             <div class="card-row"><span>{{ ui.labels.trade_plan_note }}</span><strong></strong></div>
         {% else %}
             <div class="card-row"><span>{{ ui.labels.setup }}</span><strong>СЕТАП НЕ НАЙДЕН</strong></div>
-            {% for reason in brain.setup.reasons %}
+            {% for reason in setup.reasons | default([]) %}
                 <div class="card-row"><span>⚠</span><strong>{{ reason }}</strong></div>
             {% endfor %}
-            {% for reason in brain.setup.rejection_reasons %}
+            {% for reason in setup.rejection_reasons | default([]) %}
                 <div class="card-row"><span>⚠</span><strong>{{ reason }}</strong></div>
+            {% endfor %}
+        {% endif %}
+    </section>
+
+    {% set risk = brain.get('risk_decision') or {'approved': False, 'reasons': [], 'block_reasons': ['NO_SETUP']} %}
+    <section class="card wide-card risk-decision-card {{ 'approved' if risk.approved else 'rejected' }}">
+        <div class="card-title">{{ ui.sections.risk_decision }}: {{ 'РАЗРЕШЕНО' if risk.approved else 'ЗАПРЕЩЕНО' }}</div>
+        {% if risk.approved %}
+            <div class="card-row"><span>{{ ui.labels.current_equity }}</span><strong>{{ '%.2f'|format(risk.current_equity) }} USDT</strong></div>
+            <div class="card-row"><span>{{ ui.labels.risk_budget }}</span><strong>{{ '%.2f'|format(risk.risk_budget) }} USDT</strong></div>
+            <div class="card-row"><span>{{ ui.labels.position_size }}</span><strong>{{ '%.6f'|format(risk.position_quantity) }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.position_notional }}</span><strong>{{ '%.2f'|format(risk.position_notional) }} USDT</strong></div>
+            <div class="card-row"><span>{{ ui.labels.margin_required }}</span><strong>{{ '%.2f'|format(risk.margin_required) }} USDT</strong></div>
+            <div class="card-row"><span>{{ ui.labels.planned_loss }}</span><strong>{{ '%.2f'|format(risk.planned_loss_at_stop) }} USDT</strong></div>
+            <div class="card-row"><span>{{ ui.labels.risk_percent }}</span><strong>{{ '%.2f'|format(risk.planned_loss_percent) }}%</strong></div>
+            <div class="card-row"><span>{{ ui.labels.risk_reward }}</span><strong>{{ risk.risk_reward or '-' }}</strong></div>
+        {% else %}
+            {% for reason in risk.block_reasons | default([]) %}
+                <div class="card-row"><span>⚠</span><strong>{{ reason | translate_enum(ui.risk_reasons) }}</strong></div>
             {% endfor %}
         {% endif %}
     </section>

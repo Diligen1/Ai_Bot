@@ -118,3 +118,90 @@ def test_analytics_stats_with_closed_trades(tmp_path: Path) -> None:
     assert stats['wins'] == '1'
     assert stats['losses'] == '1'
     assert stats['net_profit'] == '-1.00 USDT'
+
+
+def test_paper_trading_enabled_defaults_false(tmp_path: Path) -> None:
+    manager = DatabaseManager(str(tmp_path / 'trading.db'))
+    manager.create_tables()
+    assert manager.get_paper_trading_enabled() is False
+    manager.set_paper_trading_enabled(True)
+    assert manager.get_paper_trading_enabled() is True
+
+
+def test_add_and_update_paper_position(tmp_path: Path) -> None:
+    manager = DatabaseManager(str(tmp_path / 'trading.db'))
+    manager.create_tables()
+    position_id = manager.add_paper_position(
+        session_id=None, symbol='BTCUSDT', direction='LONG', status='OPEN',
+        entry_price=100.0, planned_entry=100.0, quantity_initial=1.0, quantity_remaining=1.0,
+        margin_used=20.0, leverage=5, stop_loss=95.0, take_profit_1=110.0, take_profit_2=120.0,
+        opened_at='2026-01-01T00:00:00+00:00',
+    )
+    assert len(manager.get_open_paper_positions()) == 1
+
+    manager.update_paper_position(position_id, status='PARTIALLY_CLOSED', quantity_remaining=0.5, tp1_hit=1, realized_pnl=5.0)
+    row = dict(manager.get_paper_position(position_id))
+    assert row['status'] == 'PARTIALLY_CLOSED'
+    assert row['quantity_remaining'] == 0.5
+    assert row['tp1_hit'] == 1
+
+    manager.update_paper_position(position_id, status='CLOSED', quantity_remaining=0.0, closed_at='2026-01-01T02:00:00+00:00')
+    assert manager.get_open_paper_positions() == []
+
+
+def test_update_paper_position_rejects_unknown_field(tmp_path: Path) -> None:
+    manager = DatabaseManager(str(tmp_path / 'trading.db'))
+    manager.create_tables()
+    position_id = manager.add_paper_position(
+        session_id=None, symbol='BTCUSDT', direction='LONG', status='OPEN',
+        entry_price=100.0, planned_entry=100.0, quantity_initial=1.0, quantity_remaining=1.0,
+        margin_used=20.0, leverage=5, stop_loss=95.0, take_profit_1=110.0, take_profit_2=120.0,
+        opened_at='2026-01-01T00:00:00+00:00',
+    )
+    with pytest.raises(ValueError):
+        manager.update_paper_position(position_id, entry_price=999.0)
+
+
+def test_get_or_create_active_session_reuses_open_session(tmp_path: Path) -> None:
+    manager = DatabaseManager(str(tmp_path / 'trading.db'))
+    manager.create_tables()
+    first = manager.get_or_create_active_session(500.0)
+    second = manager.get_or_create_active_session(500.0)
+    assert first == second
+    manager.end_session(first)
+    third = manager.get_or_create_active_session(500.0)
+    assert third != first
+
+
+def test_setup_execution_status_marks_executed(tmp_path: Path) -> None:
+    manager = DatabaseManager(str(tmp_path / 'trading.db'))
+    manager.create_tables()
+    setup_id = manager.add_setup(symbol='BTCUSDT', direction='LONG', setup_type='TREND_PULLBACK')
+    assert dict(manager.get_recent_setups(limit=1)[0])['execution_status'] == 'PENDING'
+    manager.mark_setup_executed(setup_id)
+    assert dict(manager.get_recent_setups(limit=1)[0])['execution_status'] == 'EXECUTED'
+
+
+def test_trade_history_source_filter_and_paper_columns(tmp_path: Path) -> None:
+    manager = DatabaseManager(str(tmp_path / 'trading.db'))
+    manager.create_tables()
+    manager.add_trade(
+        symbol='BTCUSDT', side='BUY', status='closed', net_pnl=5.0,
+        opened_at='2026-01-01T00:00:00+00:00', closed_at='2026-01-01T01:00:00+00:00',
+        source='paper', position_id=42, setup_id=7, strategy_version='v1', setup_score=88,
+    )
+    manager.add_trade(
+        symbol='ETHUSDT', side='SELL', status='closed', net_pnl=-2.0,
+        opened_at='2026-01-01T00:00:00+00:00', closed_at='2026-01-01T01:00:00+00:00',
+        source='seed',
+    )
+    paper_only = manager.get_trade_history(source='paper')
+    assert len(paper_only) == 1
+    row = dict(paper_only[0])
+    assert row['position_id'] == 42
+    assert row['setup_id'] == 7
+    assert row['strategy_version'] == 'v1'
+    assert row['setup_score'] == 88
+
+    paper_analytics = manager.get_analytics_stats(source='paper')
+    assert paper_analytics['total_trades'] == '1'

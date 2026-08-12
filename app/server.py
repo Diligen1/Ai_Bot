@@ -14,7 +14,9 @@ from app.dashboard_data import (
     get_market_data,
     get_market_symbols,
     get_market_updated,
+    get_open_paper_positions,
     get_open_positions,
+    get_paper_trading_status,
     get_risk_control,
     get_system_status,
     get_today_stats,
@@ -22,6 +24,7 @@ from app.dashboard_data import (
     get_nav_items,
     get_whitelist_symbols,
     remove_whitelist_symbol,
+    set_paper_trading_enabled,
 )
 from app.i18n import UI_STRINGS
 
@@ -65,18 +68,24 @@ def dashboard(request: Request) -> HTMLResponse:
             "open_positions": get_open_positions(),
             "ai_market_analysis": get_ai_market_analysis(),
             "market_updated": get_market_updated(),
+            "paper_trading": get_paper_trading_status(),
+            "open_paper_positions": get_open_paper_positions(),
         },
     )
 
 
 @app.get("/trades", response_class=HTMLResponse)
 def trades(request: Request) -> HTMLResponse:
+    source = request.query_params.get("source") or None
+    if source not in (None, "paper", "seed"):
+        source = None
     return render_page(
         request,
         "trades.html",
         {
             "title": "Сделки",
-            "trades_history": get_trades_history(),
+            "trades_history": get_trades_history(source=source),
+            "selected_source": source or "all",
         },
     )
 
@@ -132,6 +141,15 @@ async def symbols_submit(request: Request) -> RedirectResponse:
         except ValueError:
             pass
     return RedirectResponse(url='/symbols', status_code=303)
+
+
+@app.post("/paper-trading/toggle")
+async def paper_trading_toggle(request: Request) -> RedirectResponse:
+    body = await request.body()
+    data = parse_qs(body.decode('utf-8'))
+    enabled = data.get('enabled', ['false'])[0] == 'true'
+    set_paper_trading_enabled(enabled)
+    return RedirectResponse(url='/', status_code=303)
 
 
 @app.get("/brain", response_class=HTMLResponse)
