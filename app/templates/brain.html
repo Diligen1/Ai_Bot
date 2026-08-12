@@ -93,6 +93,28 @@
         {% endif %}
     </section>
 
+    {% set ai = brain.get('ai_analysis') or {'status': 'DISABLED', 'provider': 'gemini', 'ai_score': 0, 'decision': 'WAIT', 'reasons': [], 'risk_flags': []} %}
+    <section class="card wide-card ai-analysis-card">
+        <div class="card-title">{{ ui.sections.ai_analysis }}</div>
+        <div class="card-row"><span>{{ ui.labels.ai_status }}</span><strong>{{ ui.status[ai.status] or ai.status }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.ai_provider }}</span><strong>{{ ai.provider | capitalize }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.ai_score }}</span><strong>{{ ai.ai_score }} / 100</strong></div>
+        <div class="card-row"><span>{{ ui.labels.ai_decision }}</span><strong>{{ ui.ai_decision[ai.decision] or ai.decision }}</strong></div>
+        {% if ai.reasons %}
+            <div class="card-row"><span>{{ ui.labels.ai_reasons }}</span><strong></strong></div>
+            {% for reason in ai.reasons %}
+                <div class="card-row"><span>✓</span><strong>{{ reason }}</strong></div>
+            {% endfor %}
+        {% endif %}
+        {% if ai.risk_flags %}
+            <div class="card-row"><span>{{ ui.labels.ai_risk_flags }}</span><strong></strong></div>
+            {% for flag in ai.risk_flags %}
+                <div class="card-row"><span>⚠</span><strong>{{ flag }}</strong></div>
+            {% endfor %}
+        {% endif %}
+        <div class="card-text ai-disclaimer">{{ ui.messages.ai_disclaimer }}</div>
+    </section>
+
     {% set risk = brain.get('risk_decision') or {'approved': False, 'reasons': [], 'block_reasons': ['NO_SETUP']} %}
     <section class="card wide-card risk-decision-card {{ 'approved' if risk.approved else 'rejected' }}">
         <div class="card-title">{{ ui.sections.risk_decision }}: {{ 'РАЗРЕШЕНО' if risk.approved else 'ЗАПРЕЩЕНО' }}</div>

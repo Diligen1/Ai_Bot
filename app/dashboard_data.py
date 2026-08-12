@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 import json
 
+from ai.analyzer import AIAnalyzer
 from config import analysis_settings as analysis_settings
 from database.db import DatabaseManager
 from market.analysis_engine import MarketAnalysisService
@@ -26,6 +27,7 @@ _setup_engine = TradeSetupEngine()
 _portfolio = VirtualPortfolio(_db)
 _risk_manager = RiskManager(_db, _portfolio)
 _spot_vault = VirtualSpotVault(_db)
+_ai_analyzer = AIAnalyzer()
 
 
 def get_nav_items() -> list[dict[str, str]]:
@@ -392,6 +394,10 @@ def get_brain_view(symbol: str | None = None) -> dict[str, Any]:
         _persist_setup(symbol, setup)
     serialized_setup = _serialize_setup(setup)
     risk_decision = _risk_manager.evaluate(symbol, serialized_setup, market_status=analysis.get('status', 'STALE'))
+    # Advisory only — read-only display data. AIAnalyzer never receives the
+    # risk decision and RiskManager never receives the AI result, so an AI
+    # CONFIRM can never override a RiskManager rejection (see ai/analyzer.py).
+    ai_result = _ai_analyzer.analyze(symbol, analysis, setup)
     return {
         'symbol': symbol,
         'current_price': f"{last_price}" if last_price is not None else '-',
@@ -413,4 +419,13 @@ def get_brain_view(symbol: str | None = None) -> dict[str, Any]:
         'atr_percent': f"{analysis.get('atr_percent', '-'):.2f}" if isinstance(analysis.get('atr_percent'), float) else '-',
         'setup': serialized_setup,
         'risk_decision': risk_decision,
+        'ai_analysis': {
+            'status': ai_result.status,
+            'provider': ai_result.provider,
+            'direction': ai_result.direction,
+            'ai_score': ai_result.ai_score,
+            'decision': ai_result.decision,
+            'reasons': ai_result.reasons,
+            'risk_flags': ai_result.risk_flags,
+        },
     }

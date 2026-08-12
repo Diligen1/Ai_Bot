@@ -166,6 +166,12 @@
     border-color: rgba(59, 130, 246, 0.4);
     color: #bfdbfe;
 }
+.ai-disclaimer {
+    margin-top: 12px;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: #64748b;
+}
 .card-error {
     margin: 10px 0;
     padding: 10px 14px;

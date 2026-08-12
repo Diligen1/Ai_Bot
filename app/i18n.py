@@ -38,6 +38,13 @@ UI_STRINGS = {
         'STALE': 'УСТАРЕЛО',
         'ERROR': 'ОШИБКА',
         'TEST': 'ТЕСТ',
+        'DISABLED': 'НЕ ПОДКЛЮЧЁН',
+        'CONNECTED': 'ПОДКЛЮЧЁН',
+    },
+    'ai_decision': {
+        'CONFIRM': 'ПОДТВЕРДИТЬ',
+        'REJECT': 'ОТКЛОНИТЬ',
+        'WAIT': 'ЖДАТЬ',
     },
     'trade_side': {
         'BUY': 'ПОКУПКА',
@@ -64,7 +71,7 @@ UI_STRINGS = {
         'today': 'РЕЗУЛЬТАТ СЕГОДНЯ',
         'risk': 'РИСК',
         'open_positions': 'ОТКРЫТЫЕ ПОЗИЦИИ',
-        'ai_analysis': 'ИИ-МОЗГ',
+        'ai_analysis': 'ИИ-АНАЛИЗ',
         'brain': 'МОЗГ ИИ',
         'market': 'РЫНОК',
         'timeframes': 'ТАЙМФРЕЙМЫ',
@@ -171,6 +178,12 @@ UI_STRINGS = {
         'profit_split_futures': 'Profit Split: Futures',
         'profit_split_percent': 'Проценты Profit Split',
         'used_percentages': 'Использованные проценты',
+        'ai_status': 'Статус',
+        'ai_provider': 'Провайдер',
+        'ai_score': 'AI Score',
+        'ai_decision': 'Решение',
+        'ai_reasons': 'Причины',
+        'ai_risk_flags': 'Риски',
     },
     'direction': {
         'LONG': 'ЛОНГ',
@@ -239,6 +252,7 @@ UI_STRINGS = {
         'no_paper_positions': 'Открытых paper-позиций нет',
         'confirm_enable_paper_trading': 'Включить виртуальную paper-торговлю? Реальные ордера при этом никогда не отправляются.',
         'no_profit_split_yet': 'Profit Split ещё не применялся',
+        'ai_disclaimer': 'ИИ является дополнительным аналитиком и не управляет Risk Manager.',
     },
     'trades_filter': {
         'all': 'Все',
