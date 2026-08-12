@@ -5,17 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ title or 'AI Futures Bot' }}</title>
     <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/extra_style.css" />
 </head>
 <body>
     <div class="layout-shell">
         <aside class="sidebar">
-            <div class="brand">AI Futures Bot</div>
+            <div class="brand">{{ ui.brand }}</div>
             <nav class="nav-menu">
-                {% for item in nav_items %}
-                    <a href="{{ item.href }}" class="nav-link{% if request.url.path == item.href %} active{% endif %}">{{ item.label }}</a>
+                {% for group in ui.menu_groups %}
+                    <div class="menu-group">
+                        <div class="menu-group-title">{{ group.title }}</div>
+                        {% for item in group.links %}
+                            <a href="{{ item.href }}" class="nav-link{% if request.url.path == item.href %} active{% endif %}">{{ item.label }}</a>
+                        {% endfor %}
+                    </div>
                 {% endfor %}
             </nav>
-            <div class="footer">Test dashboard • No live exchange</div>
+            <div class="footer">Тёмная тема • Публичные данные Binance</div>
         </aside>
         <main class="content-area">
             <div class="topbar">

@@ -114,6 +114,32 @@ class DatabaseManager:
             )
             """
         )
+        self._execute(
+            """
+            CREATE TABLE IF NOT EXISTS setups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                setup_type TEXT NOT NULL,
+                entry_zone_low REAL,
+                entry_zone_high REAL,
+                stop_loss REAL,
+                take_profit_1 REAL,
+                take_profit_2 REAL,
+                risk_reward_tp1 REAL,
+                risk_reward_tp2 REAL,
+                invalidation_level REAL,
+                confidence TEXT,
+                technical_score INTEGER,
+                setup_score INTEGER,
+                status TEXT,
+                created_at TEXT,
+                expires_at TEXT,
+                rejection_reasons TEXT,
+                analysis_snapshot TEXT
+            )
+            """
+        )
         if first_run:
             self._initialize_default_whitelist()
         else:
@@ -269,6 +295,69 @@ class DatabaseManager:
     def get_recent_signals(self, limit: int = 5) -> list[sqlite3.Row]:
         cursor = self._execute(
             "SELECT * FROM signals ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        )
+        return cursor.fetchall()
+
+    def add_setup(
+        self,
+        symbol: str,
+        direction: str,
+        setup_type: str,
+        entry_zone_low: float | None = None,
+        entry_zone_high: float | None = None,
+        stop_loss: float | None = None,
+        take_profit_1: float | None = None,
+        take_profit_2: float | None = None,
+        risk_reward_tp1: float | None = None,
+        risk_reward_tp2: float | None = None,
+        invalidation_level: float | None = None,
+        confidence: str | None = None,
+        technical_score: int | None = None,
+        setup_score: int | None = None,
+        status: str | None = None,
+        created_at: str | None = None,
+        expires_at: str | None = None,
+        rejection_reasons: str | None = None,
+        analysis_snapshot: str | None = None,
+    ) -> int:
+        cursor = self._execute(
+            """
+            INSERT INTO setups (
+                symbol, direction, setup_type, entry_zone_low, entry_zone_high,
+                stop_loss, take_profit_1, take_profit_2, risk_reward_tp1,
+                risk_reward_tp2, invalidation_level, confidence, technical_score,
+                setup_score, status, created_at, expires_at, rejection_reasons,
+                analysis_snapshot
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                symbol,
+                direction,
+                setup_type,
+                entry_zone_low,
+                entry_zone_high,
+                stop_loss,
+                take_profit_1,
+                take_profit_2,
+                risk_reward_tp1,
+                risk_reward_tp2,
+                invalidation_level,
+                confidence,
+                technical_score,
+                setup_score,
+                status,
+                created_at,
+                expires_at,
+                rejection_reasons,
+                analysis_snapshot,
+            ),
+        )
+        return cursor.lastrowid
+
+    def get_recent_setups(self, limit: int = 10) -> list[sqlite3.Row]:
+        cursor = self._execute(
+            "SELECT * FROM setups ORDER BY created_at DESC LIMIT ?",
             (limit,),
         )
         return cursor.fetchall()

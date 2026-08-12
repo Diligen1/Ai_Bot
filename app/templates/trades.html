@@ -2,21 +2,21 @@
 
 {% block content %}
 <section class="card single-card">
-    <div class="card-title">TRADES HISTORY</div>
+    <div class="card-title">{{ ui.sections.trades }}</div>
     {% if trades_history %}
         <div class="table-wrap">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Symbol</th>
-                        <th>Side</th>
-                        <th>Status</th>
-                        <th>Entry</th>
-                        <th>Exit</th>
-                        <th>Net PnL</th>
-                        <th>Opened</th>
-                        <th>Closed</th>
+                        <th>{{ ui.labels.id }}</th>
+                        <th>{{ ui.labels.symbol }}</th>
+                        <th>{{ ui.labels.direction }}</th>
+                        <th>{{ ui.labels.status }}</th>
+                        <th>{{ ui.labels.entry }}</th>
+                        <th>{{ ui.labels.exit }}</th>
+                        <th>{{ ui.labels.net_pnl }}</th>
+                        <th>{{ ui.labels.opened }}</th>
+                        <th>{{ ui.labels.closed }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,11 +24,11 @@
                         <tr>
                             <td>{{ trade.id }}</td>
                             <td>{{ trade.symbol }}</td>
-                            <td>{{ trade.side }}</td>
-                            <td>{{ trade.status }}</td>
+                            <td class="trade-side {{ trade.side | lower }}">{{ ui.trade_side[trade.side] or trade.side }}</td>
+                            <td>{{ ui.trade_status[trade.status] or trade.status }}</td>
                             <td>{{ trade.entry_price or '-' }}</td>
                             <td>{{ trade.exit_price or '-' }}</td>
-                            <td>{{ trade.net_pnl or '-' }}</td>
+                            <td class="profit-cell {% if trade.net_pnl is not none and trade.net_pnl|float > 0 %}positive{% elif trade.net_pnl is not none and trade.net_pnl|float < 0 %}negative{% endif %}">{{ trade.net_pnl or '-' }}</td>
                             <td>{{ trade.opened_at or '-' }}</td>
                             <td>{{ trade.closed_at or '-' }}</td>
                         </tr>
@@ -37,7 +37,7 @@
             </table>
         </div>
     {% else %}
-        <div class="card-empty">No trades yet</div>
+        <div class="card-empty">{{ ui.messages.no_trades }}</div>
     {% endif %}
 </section>
 {% endblock %}

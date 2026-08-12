@@ -2,19 +2,20 @@
 
 {% block content %}
 <section class="card single-card">
-    <div class="card-title">SYMBOL WHITELIST</div>
+    <div class="card-title">{{ ui.sections.symbols }}</div>
+    <div class="card-text">{{ ui.messages.symbols_description }}</div>
     <form method="post" class="form-row">
-        <input type="text" name="symbol" placeholder="Enter symbol e.g. BTCUSDT" required />
-        <button type="submit" name="action" value="add">Add Symbol</button>
+        <input type="text" name="symbol" placeholder="{{ ui.placeholders.symbol }}" required />
+        <button type="submit" name="action" value="add">{{ ui.buttons.add }}</button>
     </form>
     {% if whitelist_symbols %}
         <div class="table-wrap">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Symbol</th>
-                        <th>Added</th>
-                        <th>Actions</th>
+                        <th>{{ ui.labels.symbol }}</th>
+                        <th>{{ ui.labels.added }}</th>
+                        <th>{{ ui.labels.actions }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -25,7 +26,7 @@
                             <td>
                                 <form method="post" style="display:inline; margin:0;">
                                     <input type="hidden" name="symbol" value="{{ symbol.symbol }}" />
-                                    <button type="submit" name="action" value="remove">Remove</button>
+                                    <button type="submit" name="action" value="remove">{{ ui.buttons.remove }}</button>
                                 </form>
                             </td>
                         </tr>
@@ -34,7 +35,7 @@
             </table>
         </div>
     {% else %}
-        <div class="card-text">No whitelisted symbols configured yet.</div>
+        <div class="card-text">{{ ui.messages.no_trades }}</div>
     {% endif %}
 </section>
 {% endblock %}

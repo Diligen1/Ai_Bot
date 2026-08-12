@@ -1,31 +1,112 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="grid-grid">
-    <section class="card">
-        <div class="card-title">Market</div>
-        <div class="card-row"><span>Symbol</span><strong>{{ brain.symbol }}</strong></div>
-        <div class="card-row"><span>4H Trend</span><strong>{{ brain.trend_4h }}</strong></div>
-        <div class="card-row"><span>1H Trend</span><strong>{{ brain.trend_1h }}</strong></div>
-        <div class="card-row"><span>15M Trend</span><strong>{{ brain.trend_15m }}</strong></div>
+<div class="card single-card">
+    <div class="card-title">{{ ui.sections.brain }}</div>
+    <div class="card-text">{{ ui.messages.ai_note }}</div>
+</div>
+
+<form class="symbol-select-form" method="get">
+    <label for="symbol">Выбрать монету:</label>
+    <select name="symbol" id="symbol" onchange="this.form.submit()">
+        {% for sym in symbols %}
+            <option value="{{ sym }}" {% if sym == selected_symbol %}selected{% endif %}>{{ sym }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+<div class="brain-grid">
+    <section class="card wide-card">
+        <div class="card-title">ОБЩИЙ АНАЛИЗ</div>
+        <div class="card-row"><span>{{ ui.labels.symbol }}</span><strong>{{ brain.symbol }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.current_price }}</span><strong>{{ brain.current_price }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.market_regime }}</span><strong>{{ brain.market_regime | translate_enum(ui.market_regime, '-') }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.direction }}</span><strong>{{ brain.direction | translate_enum(ui.direction, '-') }}</strong></div>
+        <div class="card-row"><span>{{ ui.sections.scores }}</span><strong>{{ brain.technical_score or '-' }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.confidence }}</span><strong>{{ brain.confidence | translate_enum(ui.confidence, '-') }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.timeframe_alignment }}</span><strong>{{ brain.timeframe_alignment | translate_enum(ui.timeframe_alignment, '-') }}</strong></div>
+        <div class="card-row"><span>Кандидат на сделку</span><strong>{{ brain.trade_candidate | default('-') }}</strong></div>
     </section>
 
     <section class="card">
-        <div class="card-title">Indicators</div>
-        <div class="card-row"><span>RSI</span><strong>{{ brain.rsi }}</strong></div>
-        <div class="card-row"><span>Volume</span><strong>{{ brain.volume }}</strong></div>
-        <div class="card-row"><span>Open Interest</span><strong>{{ brain.open_interest }}</strong></div>
-        <div class="card-row"><span>Funding</span><strong>{{ brain.funding }}</strong></div>
+        <div class="card-title">4 ЧАСА</div>
+        <div class="card-row"><span>{{ ui.sections.trend }}</span><strong>{{ brain.analysis_4h.trend | translate_enum(ui.trend, '-') }}</strong></div>
+        <div class="card-row"><span>EMA20</span><strong>{{ brain.analysis_4h.indicators.ema20 or '-' }}</strong></div>
+        <div class="card-row"><span>EMA50</span><strong>{{ brain.analysis_4h.indicators.ema50 or '-' }}</strong></div>
+        <div class="card-row"><span>EMA200</span><strong>{{ brain.analysis_4h.indicators.ema200 or '-' }}</strong></div>
+        <div class="card-row"><span>RSI</span><strong>{{ brain.analysis_4h.indicators.rsi14 or '-' }}</strong></div>
+        <div class="card-row"><span>MACD</span><strong>{% if brain.analysis_4h.indicators.macd_line is not none and brain.analysis_4h.indicators.signal_line is not none %}{{ brain.analysis_4h.indicators.macd_line }} / {{ brain.analysis_4h.indicators.signal_line }}{% else %}-{% endif %}</strong></div>
+        <div class="card-row"><span>ATR</span><strong>{{ brain.analysis_4h.indicators.atr14 or '-' }}</strong></div>
+        <div class="card-row"><span>ATR %</span><strong>{{ brain.analysis_4h.atr_percent or '-' }}</strong></div>
+        <div class="card-row"><span>Структура</span><strong>{{ brain.analysis_4h.structure | translate_enum(ui.structure, '-') }}</strong></div>
+    </section>
+
+    <section class="card">
+        <div class="card-title">1 ЧАС</div>
+        <div class="card-row"><span>{{ ui.sections.trend }}</span><strong>{{ brain.analysis_1h.trend | translate_enum(ui.trend, '-') }}</strong></div>
+        <div class="card-row"><span>EMA20</span><strong>{{ brain.analysis_1h.indicators.ema20 or '-' }}</strong></div>
+        <div class="card-row"><span>EMA50</span><strong>{{ brain.analysis_1h.indicators.ema50 or '-' }}</strong></div>
+        <div class="card-row"><span>EMA200</span><strong>{{ brain.analysis_1h.indicators.ema200 or '-' }}</strong></div>
+        <div class="card-row"><span>RSI</span><strong>{{ brain.analysis_1h.indicators.rsi14 or '-' }}</strong></div>
+        <div class="card-row"><span>MACD</span><strong>{% if brain.analysis_1h.indicators.macd_line is not none and brain.analysis_1h.indicators.signal_line is not none %}{{ brain.analysis_1h.indicators.macd_line }} / {{ brain.analysis_1h.indicators.signal_line }}{% else %}-{% endif %}</strong></div>
+        <div class="card-row"><span>ATR</span><strong>{{ brain.analysis_1h.indicators.atr14 or '-' }}</strong></div>
+        <div class="card-row"><span>ATR %</span><strong>{{ brain.analysis_1h.atr_percent or '-' }}</strong></div>
+        <div class="card-row"><span>Структура</span><strong>{{ brain.analysis_1h.structure | translate_enum(ui.structure, '-') }}</strong></div>
+    </section>
+
+    <section class="card">
+        <div class="card-title">15 МИНУТ</div>
+        <div class="card-row"><span>{{ ui.sections.trend }}</span><strong>{{ brain.analysis_15m.trend | translate_enum(ui.trend, '-') }}</strong></div>
+        <div class="card-row"><span>EMA20</span><strong>{{ brain.analysis_15m.indicators.ema20 or '-' }}</strong></div>
+        <div class="card-row"><span>EMA50</span><strong>{{ brain.analysis_15m.indicators.ema50 or '-' }}</strong></div>
+        <div class="card-row"><span>EMA200</span><strong>{{ brain.analysis_15m.indicators.ema200 or '-' }}</strong></div>
+        <div class="card-row"><span>RSI</span><strong>{{ brain.analysis_15m.indicators.rsi14 or '-' }}</strong></div>
+        <div class="card-row"><span>MACD</span><strong>{% if brain.analysis_15m.indicators.macd_line is not none and brain.analysis_15m.indicators.signal_line is not none %}{{ brain.analysis_15m.indicators.macd_line }} / {{ brain.analysis_15m.indicators.signal_line }}{% else %}-{% endif %}</strong></div>
+        <div class="card-row"><span>ATR</span><strong>{{ brain.analysis_15m.indicators.atr14 or '-' }}</strong></div>
+        <div class="card-row"><span>ATR %</span><strong>{{ brain.analysis_15m.atr_percent or '-' }}</strong></div>
+        <div class="card-row"><span>Структура</span><strong>{{ brain.analysis_15m.structure | translate_enum(ui.structure, '-') }}</strong></div>
     </section>
 
     <section class="card wide-card">
-        <div class="card-title">Scores</div>
-        <div class="card-row"><span>Technical Score</span><strong>{{ brain.technical_score }}</strong></div>
-        <div class="card-row"><span>Historical Score</span><strong>{{ brain.historical_score }}</strong></div>
-        <div class="card-row"><span>AI Score</span><strong>{{ brain.ai_score }}</strong></div>
-        <div class="divider"></div>
-        <div class="card-row"><span>Final Score</span><strong>{{ brain.final_score }}</strong></div>
-        <div class="card-row"><span>Decision</span><strong>{{ brain.decision }}</strong></div>
+        <div class="card-title">{{ ui.sections.trade_plan }}</div>
+        {% if brain.setup.setup_type != 'NO_SETUP' and brain.setup.status != 'REJECTED' %}
+            <div class="card-row"><span>{{ ui.labels.setup_status }}</span><strong>{{ brain.setup.status | translate_enum(ui.setup_status, '-') }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.setup_type }}</span><strong>{{ brain.setup.setup_type | translate_enum(ui.setup_type, '-') }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.direction }}</span><strong>{{ brain.setup.direction | translate_enum(ui.direction, '-') }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.entry_zone }}</span><strong>{{ brain.setup.entry_zone_low }} – {{ brain.setup.entry_zone_high }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.stop_loss }}</span><strong>{{ brain.setup.stop_loss }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.take_profit_1 }}</span><strong>{{ brain.setup.take_profit_1 }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.take_profit_2 }}</span><strong>{{ brain.setup.take_profit_2 }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.risk_reward }}</span><strong>{{ brain.setup.risk_reward_tp1 }} / {{ brain.setup.risk_reward_tp2 }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.setup_score }}</span><strong>{{ brain.setup.setup_score }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.invalidation }}</span><strong>{{ brain.setup.invalidation_level }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.trade_plan_note }}</span><strong></strong></div>
+        {% else %}
+            <div class="card-row"><span>{{ ui.labels.setup }}</span><strong>СЕТАП НЕ НАЙДЕН</strong></div>
+            {% for reason in brain.setup.reasons %}
+                <div class="card-row"><span>⚠</span><strong>{{ reason }}</strong></div>
+            {% endfor %}
+            {% for reason in brain.setup.rejection_reasons %}
+                <div class="card-row"><span>⚠</span><strong>{{ reason }}</strong></div>
+            {% endfor %}
+        {% endif %}
+    </section>
+
+    <section class="card wide-card">
+        <div class="card-title">ПРИЧИНЫ</div>
+        {% if brain.reasons %}
+            {% for reason in brain.reasons %}
+                <div class="card-row"><span>✓</span><strong>{{ reason }}</strong></div>
+            {% endfor %}
+        {% else %}
+            <div class="card-row"><span>-</span><strong>Нет причин</strong></div>
+        {% endif %}
+        {% if brain.block_reasons %}
+            <div class="divider"></div>
+            {% for block in brain.block_reasons %}
+                <div class="card-row"><span>⚠</span><strong>{{ block }}</strong></div>
+            {% endfor %}
+        {% endif %}
     </section>
 </div>
 {% endblock %}

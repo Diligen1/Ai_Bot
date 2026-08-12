@@ -1,15 +1,25 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="card single-card">
-    <div class="card-title">ANALYTICS</div>
-    <div class="card-row"><span>Total Trades</span><strong>{{ analytics.total_trades }}</strong></div>
-    <div class="card-row"><span>Wins</span><strong>{{ analytics.wins }}</strong></div>
-    <div class="card-row"><span>Losses</span><strong>{{ analytics.losses }}</strong></div>
-    <div class="card-row"><span>Win Rate</span><strong>{{ analytics.win_rate }}</strong></div>
-    <div class="card-row"><span>Profit Factor</span><strong>{{ analytics.profit_factor }}</strong></div>
-    <div class="card-row"><span>Average R</span><strong>{{ analytics.average_r }}</strong></div>
-    <div class="card-row"><span>Max Drawdown</span><strong>{{ analytics.max_drawdown }}</strong></div>
-    <div class="card-row"><span>Net Profit</span><strong>{{ analytics.net_profit }}</strong></div>
-</section>
+<div class="overview-grid">
+    <section class="card analytics-card">
+        <div class="card-title">{{ ui.sections.analytics }}</div>
+        <div class="card-row"><span>{{ ui.labels.total_trades }}</span><strong>{{ analytics.total_trades }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.wins }}</span><strong>{{ analytics.wins }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.losses }}</span><strong>{{ analytics.losses }}</strong></div>
+        <div class="card-row" title="{{ ui.tooltips.win_rate }}"><span>{{ ui.labels.win_rate }}</span><strong>{{ analytics.win_rate }}</strong></div>
+    </section>
+
+    <section class="card analytics-card">
+        <div class="card-title">ЭФФЕКТИВНОСТЬ</div>
+        <div class="card-row" title="{{ ui.tooltips.profit_factor }}"><span>{{ ui.labels.profit_factor }}</span><strong>{{ analytics.profit_factor }}</strong></div>
+        <div class="card-row" title="{{ ui.tooltips.average_r }}"><span>{{ ui.labels.average_r }}</span><strong>{{ analytics.average_r }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.net_profit }}</span><strong>{{ analytics.net_profit }}</strong></div>
+    </section>
+
+    <section class="card analytics-card">
+        <div class="card-title">{{ ui.sections.risk }}</div>
+        <div class="card-row" title="{{ ui.tooltips.max_drawdown }}"><span>Max Drawdown</span><strong>{{ analytics.max_drawdown }}</strong></div>
+    </section>
+</div>
 {% endblock %}

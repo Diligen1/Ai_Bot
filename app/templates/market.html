@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="market-grid">
+    {% for symbol, data in market_data.items() %}
+        <section class="card market-card">
+            <div class="market-header">
+                <div class="card-title">{{ symbol }}</div>
+                <span class="badge {{ data.status | default('STALE') | lower }}">{{ data.status | translate_enum(ui.status, '-') }}</span>
+            </div>
+            <div class="card-section">
+                <div class="section-title">ЦЕНА</div>
+                <div class="card-row"><span>{{ ui.labels.last_price }}</span><strong>{{ data.last_price }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.mark_price }}</span><strong>{{ data.mark_price }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.change_24h }}</span><strong class="{{ 'positive' if data.price_change_percent | default(0) | float > 0 else 'negative' if data.price_change_percent | default(0) | float < 0 else '' }}">{{ data.price_change_percent or '-' }}%</strong></div>
+            </div>
+            <div class="card-section">
+                <div class="section-title">ОБЪЁМ</div>
+                <div class="card-row"><span>{{ ui.labels.volume_24h }}</span><strong>{{ data.volume }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.open_interest }}</span><strong>{{ data.open_interest }}</strong></div>
+            </div>
+            <div class="card-section">
+                <div class="section-title">ФЬЮЧЕРСЫ</div>
+                <div class="card-row"><span>{{ ui.labels.funding_rate }}</span><strong>{{ data.funding_rate }}</strong></div>
+            </div>
+            <div class="card-section">
+                <div class="section-title">АНАЛИЗ</div>
+                <div class="card-row"><span>4H</span><strong>{{ data.trend_4h | translate_enum(ui.trend, '-') }}</strong></div>
+                <div class="card-row"><span>1H</span><strong>{{ data.trend_1h | translate_enum(ui.trend, '-') }}</strong></div>
+                <div class="card-row"><span>15M</span><strong>{{ data.trend_15m | translate_enum(ui.trend, '-') }}</strong></div>
+                <div class="card-row"><span>Режим</span><strong>{{ data.market_regime | translate_enum(ui.market_regime, '-') }}</strong></div>
+                <div class="card-row"><span>Направление</span><strong>{{ data.direction | translate_enum(ui.direction, '-') }}</strong></div>
+                <div class="card-row"><span>Оценка</span><strong>{{ data.technical_score or '-' }}</strong></div>
+                <div class="card-row"><span>Кандидат</span><strong>{{ 'ДА' if data.trade_candidate else 'НЕТ' }}</strong></div>
+            </div>
+            <div class="card-section">
+                <div class="section-title">{{ ui.labels.setup }}</div>
+                <div class="card-row"><span>{{ ui.labels.setup }}</span><strong>{{ 'ЕСТЬ' if data.setup.setup_type != 'NO_SETUP' and data.setup.status != 'REJECTED' else 'НЕТ' }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.setup_type }}</span><strong>{{ data.setup.setup_type | translate_enum(ui.setup_type, '-') }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.direction }}</span><strong>{{ data.setup.direction | translate_enum(ui.direction, '-') }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.setup_score }}</span><strong>{{ data.setup.setup_score or '-' }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.setup_status }}</span><strong>{{ data.setup.status | translate_enum(ui.setup_status, '-') }}</strong></div>
+            </div>
+            <div class="card-section">
+                <div class="section-title">СТАКАН</div>
+                <div class="card-row"><span>{{ ui.labels.best_bid }}</span><strong>{{ data.best_bid }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.best_ask }}</span><strong>{{ data.best_ask }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.spread }}</span><strong>{{ data.spread }}</strong></div>
+            </div>
+            <div class="card-row"><span>{{ ui.labels.last_update }}</span><strong>{{ data.last_update }}</strong></div>
+        </section>
+    {% endfor %}
+</div>
+{% endblock %}

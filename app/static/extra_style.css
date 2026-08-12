@@ -1,0 +1,117 @@
+/* дополнительные стили для русской версии интерфейса */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e5e9f0;
+}
+.badge.live,
+.badge.работает,
+.badge.online {
+    background: rgba(34, 197, 94, 0.16);
+    color: #d1fae5;
+}
+.badge.error,
+.badge.ошибка {
+    background: rgba(248, 113, 113, 0.18);
+    color: #fecaca;
+}
+.badge.stale,
+.badge.устарело {
+    background: rgba(252, 211, 77, 0.16);
+    color: #fef08a;
+}
+.badge.test,
+.badge.тест {
+    background: rgba(59, 130, 246, 0.16);
+    color: #bfdbfe;
+}
+.card-row strong.positive,
+.profit-cell.positive {
+    color: #22c55e;
+}
+.card-row strong.negative,
+.profit-cell.negative {
+    color: #f87171;
+}
+.trade-side.long,
+.trade-side.большой,
+.trade-side.покупка {
+    color: #22c55e;
+    font-weight: 700;
+}
+.trade-side.short,
+.trade-side.продажа {
+    color: #f87171;
+    font-weight: 700;
+}
+.menu-group {
+    margin-bottom: 18px;
+}
+.menu-group-title {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 10px;
+    letter-spacing: 0.16em;
+}
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+.brain-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+.symbol-select-form {
+    margin: 16px 0;
+}
+.symbol-select-form label {
+    color: #94a3b8;
+    margin-right: 10px;
+}
+.symbol-select-form select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: #0f172a;
+    color: #e2e8f0;
+}
+.status-card {
+    grid-column: span 2;
+}
+.card-section {
+    margin-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 18px;
+}
+.section-title {
+    margin-bottom: 12px;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+.market-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.decision-card {
+    text-align: center;
+}
+.decision-card .card-row {
+    justify-content: center;
+}
+.card-row span {
+    color: #94a3b8;
+}
