@@ -198,6 +198,29 @@ class DatabaseManager:
             """
         )
         self._migrate_spot_vault_transfers_percent_columns()
+        self._execute(
+            """
+            CREATE TABLE IF NOT EXISTS live_execution_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                execution_id TEXT NOT NULL UNIQUE,
+                client_order_id TEXT NOT NULL UNIQUE,
+                setup_id INTEGER,
+                symbol TEXT NOT NULL,
+                side TEXT,
+                quantity REAL,
+                entry_order_id TEXT,
+                sl_order_id TEXT,
+                tp1_order_id TEXT,
+                tp2_order_id TEXT,
+                status TEXT NOT NULL,
+                requested_at TEXT,
+                confirmed_at TEXT,
+                error_code TEXT,
+                error_message TEXT
+            )
+            """
+        )
+        self._migrate_live_execution_log_recovery_columns()
         if first_run:
             self._initialize_default_whitelist()
         else:
@@ -253,6 +276,19 @@ class DatabaseManager:
         for column in ('spot_percent_used', 'futures_percent_used'):
             if column not in columns:
                 self._execute(f"ALTER TABLE spot_vault_transfers ADD COLUMN {column} REAL")
+
+    def _migrate_live_execution_log_recovery_columns(self) -> None:
+        """`stop_loss`/`position_side` are captured at entry time so that
+        CRITICAL_UNPROTECTED_POSITION recovery (execution/live_trading_engine.py)
+        can re-attempt placing the protective Stop Loss without guessing —
+        it uses the price/side that was ACTUALLY intended for that specific
+        attempt, never a freshly recomputed one."""
+        cursor = self._execute("PRAGMA table_info(live_execution_log)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'stop_loss' not in columns:
+            self._execute("ALTER TABLE live_execution_log ADD COLUMN stop_loss REAL")
+        if 'position_side' not in columns:
+            self._execute("ALTER TABLE live_execution_log ADD COLUMN position_side TEXT")
 
     def add_trade(
         self,
@@ -515,6 +551,15 @@ class DatabaseManager:
 
     def set_kill_switch(self, value: bool) -> None:
         self.set_setting('risk_kill_switch', 'true' if value else 'false')
+
+    def get_live_kill_switch(self) -> bool:
+        """Separate from get_kill_switch() (paper trading) — stopping paper
+        trading must never be assumed to also stop real execution, and vice
+        versa. Defaults to False (off) like every other kill switch here."""
+        return self.get_setting('live_kill_switch') == 'true'
+
+    def set_live_kill_switch(self, value: bool) -> None:
+        self.set_setting('live_kill_switch', 'true' if value else 'false')
 
     def get_paper_trading_enabled(self) -> bool:
         return self.get_setting('paper_trading_enabled') == 'true'
@@ -791,3 +836,73 @@ class DatabaseManager:
             raise ValueError('Сумма процентов Spot и Futures должна быть равна 100%')
         self.set_setting('profit_split_spot_percent', str(spot_percent))
         self.set_setting('profit_split_futures_percent', str(futures_percent))
+
+    # -- Live Execution Engine V2: audit log (NEVER stores API key/secret/signature) --
+
+    def add_live_execution_log(
+        self,
+        execution_id: str,
+        client_order_id: str,
+        symbol: str,
+        status: str,
+        setup_id: int | None = None,
+        side: str | None = None,
+        quantity: float | None = None,
+        stop_loss: float | None = None,
+        position_side: str | None = None,
+        requested_at: str | None = None,
+    ) -> int | None:
+        """`client_order_id` is UNIQUE — this is the idempotency guard: a second
+        attempt for the same setup/label is rejected at the database level, so
+        the caller must look up the existing row (get_live_execution_log_by_client_order_id)
+        and reconcile against Binance instead of blindly placing a new order.
+        `stop_loss`/`position_side` are captured here (not just derived later)
+        so a CRITICAL_UNPROTECTED_POSITION recovery attempt always knows the
+        price/side actually intended for this specific attempt.
+        Returns the new row id, or None if client_order_id was already used."""
+        requested_at = requested_at or datetime.now(timezone.utc).isoformat()
+        try:
+            cursor = self._execute(
+                """
+                INSERT INTO live_execution_log (
+                    execution_id, client_order_id, setup_id, symbol, side, quantity,
+                    stop_loss, position_side, status, requested_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (execution_id, client_order_id, setup_id, symbol, side, quantity, stop_loss, position_side, status, requested_at),
+            )
+        except sqlite3.IntegrityError:
+            return None
+        return cursor.lastrowid
+
+    def update_live_execution_log(self, execution_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        allowed = {
+            'status', 'entry_order_id', 'sl_order_id', 'tp1_order_id', 'tp2_order_id',
+            'confirmed_at', 'error_code', 'error_message',
+        }
+        unknown = set(fields) - allowed
+        if unknown:
+            raise ValueError(f"Unknown live_execution_log fields: {sorted(unknown)}")
+        set_clause = ', '.join(f"{key} = ?" for key in fields)
+        params = list(fields.values()) + [execution_id]
+        self._execute(f"UPDATE live_execution_log SET {set_clause} WHERE execution_id = ?", tuple(params))
+
+    def get_live_execution_log(self, execution_id: str) -> sqlite3.Row | None:
+        cursor = self._execute("SELECT * FROM live_execution_log WHERE execution_id = ?", (execution_id,))
+        return cursor.fetchone()
+
+    def get_live_execution_log_by_client_order_id(self, client_order_id: str) -> sqlite3.Row | None:
+        cursor = self._execute("SELECT * FROM live_execution_log WHERE client_order_id = ?", (client_order_id,))
+        return cursor.fetchone()
+
+    def get_last_live_execution_log(self) -> sqlite3.Row | None:
+        cursor = self._execute("SELECT * FROM live_execution_log ORDER BY id DESC LIMIT 1")
+        return cursor.fetchone()
+
+    def get_live_execution_logs_by_status(self, status: str) -> list[sqlite3.Row]:
+        """Used by CRITICAL_UNPROTECTED_POSITION recovery to find every
+        execution that still needs a protective Stop Loss re-attempted."""
+        cursor = self._execute("SELECT * FROM live_execution_log WHERE status = ?", (status,))
+        return cursor.fetchall()

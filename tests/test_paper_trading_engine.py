@@ -699,3 +699,42 @@ def test_impossible_safe_fill_is_rejected(tmp_path: Path) -> None:
     engine.run_once(now=NOW)
 
     assert db.get_open_paper_positions() == []
+
+
+class RaisingForSymbolSetupEngine(DictSetupEngine):
+    """Like DictSetupEngine, but raises for a chosen set of symbols — used to
+    prove one symbol's exception never blocks the rest of the same tick."""
+
+    def __init__(self, setups: dict[str, dict[str, Any]], raise_for: set[str]) -> None:
+        super().__init__(setups)
+        self.raise_for = raise_for
+
+    def build_setup(self, analysis: dict[str, Any], symbol_data: dict[str, Any]) -> dict[str, Any]:
+        symbol = analysis.get('symbol')
+        if symbol in self.raise_for:
+            raise RuntimeError(f'simulated failure for {symbol}')
+        return super().build_setup(analysis, symbol_data)
+
+
+def test_one_symbol_error_does_not_block_other_symbols_same_tick(tmp_path: Path) -> None:
+    btc_setup = _long_setup(symbol='BTCUSDT')
+    eth_setup = _short_setup(symbol='ETHUSDT')
+    db = _manager(tmp_path)
+    db.set_paper_trading_enabled(True)
+    market = FakeMarketService()
+    analysis_service = FakeAnalysisService()
+    setup_engine = RaisingForSymbolSetupEngine({'ETHUSDT': eth_setup}, raise_for={'BTCUSDT'})
+    portfolio = VirtualPortfolio(db)
+    risk_manager = RiskManager(db, portfolio)
+    engine = PaperTradingEngine(db, portfolio, risk_manager, setup_engine, market, analysis_service, lambda: ['BTCUSDT', 'ETHUSDT'])
+
+    market.set_price('BTCUSDT', 100.0)
+    market.set_price('ETHUSDT', 99.0)
+    analysis_service.analysis['BTCUSDT'] = _fake_analysis('BTCUSDT', 'LONG', 100.0)
+    analysis_service.analysis['ETHUSDT'] = _fake_analysis('ETHUSDT', 'SHORT', 99.0)
+
+    engine.run_once(now=NOW)  # must not raise despite BTCUSDT's setup engine blowing up
+
+    symbols_opened = {p['symbol'] for p in db.get_open_paper_positions()}
+    assert 'BTCUSDT' not in symbols_opened  # blew up before it could open
+    assert 'ETHUSDT' in symbols_opened  # still processed in the same tick

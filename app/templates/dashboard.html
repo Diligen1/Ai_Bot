@@ -15,6 +15,153 @@
         <div class="card-row"><span>{{ ui.labels.market_updated }}</span><strong>{{ market_updated or '-' }}</strong></div>
     </section>
 
+    <section class="card binance-account-card">
+        <div class="card-title">{{ ui.sections.binance_account }}</div>
+        <div class="card-row"><span>{{ ui.labels.binance_status }}</span><strong>{{ ui.status[binance_account.status] or binance_account.status }}</strong></div>
+        {% if binance_account.status == 'CONNECTED' %}
+            <div class="card-row"><span>{{ ui.labels.binance_wallet_balance }}</span><strong>{{ binance_account.wallet_balance }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.binance_available_balance }}</span><strong>{{ binance_account.available_balance }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.binance_unrealized_pnl }}</span><strong>{{ binance_account.unrealized_pnl }}</strong></div>
+            <div class="card-section">
+                <div class="section-title">{{ ui.labels.binance_open_positions }}</div>
+                {% if binance_account.positions %}
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ ui.labels.symbol }}</th>
+                                    <th>{{ ui.labels.position_amt }}</th>
+                                    <th>{{ ui.labels.entry }}</th>
+                                    <th>{{ ui.labels.unrealized_pnl }}</th>
+                                    <th>{{ ui.labels.leverage }}</th>
+                                    <th>{{ ui.labels.position_side }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for position in binance_account.positions %}
+                                    <tr>
+                                        <td>{{ position.symbol }}</td>
+                                        <td>{{ position.position_amt }}</td>
+                                        <td>{{ position.entry_price }}</td>
+                                        <td>{{ position.unrealized_pnl }}</td>
+                                        <td>{{ position.leverage }}</td>
+                                        <td>{{ position.position_side }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="card-text">{{ ui.messages.no_binance_positions }}</div>
+                {% endif %}
+            </div>
+        {% elif binance_account.status == 'ERROR' %}
+            <div class="card-error">{{ binance_account.error_message or ui.status.ERROR }}</div>
+        {% endif %}
+        <div class="card-text ai-disclaimer">{{ ui.messages.binance_read_only_notice }}</div>
+    </section>
+
+    <section class="card live-risk-card">
+        <div class="card-title">{{ ui.sections.live_risk }}</div>
+        <div class="card-row"><span>{{ ui.labels.binance_status }}</span><strong>{{ ui.status[live_risk.status] or live_risk.status }}</strong></div>
+        {% if live_risk.status == 'CONNECTED' %}
+            <div class="card-row"><span>{{ ui.labels.live_real_equity }}</span><strong>{{ live_risk.real_equity }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.live_available_balance }}</span><strong>{{ live_risk.available_balance }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.live_max_margin }}</span><strong>{{ live_risk.max_allowed_margin }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.live_risk_budget }}</span><strong>{{ live_risk.risk_budget }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.live_open_positions }}</span><strong>{{ live_risk.open_positions }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.live_current_exposure }}</span><strong>{{ live_risk.current_exposure }}</strong></div>
+            <div class="card-row"><span>{{ ui.labels.kill_switch }}</span><strong>{{ live_risk.kill_switch }}</strong></div>
+        {% elif live_risk.status == 'ERROR' %}
+            <div class="card-error">{{ live_risk.error_message or ui.status.ERROR }}</div>
+        {% endif %}
+        <div class="card-text ai-disclaimer">{{ ui.messages.live_risk_disclaimer }}</div>
+    </section>
+
+    <section class="card live-execution-card">
+        <div class="card-title">{{ ui.sections.live_execution }} — {{ ui.messages.preview_badge }}</div>
+        <div class="card-row"><span>{{ ui.labels.live_execution_status }}</span><strong>DRY RUN</strong></div>
+        <div class="card-section">
+            <div class="section-title">{{ ui.labels.live_last_order_intent }}</div>
+            {% if live_execution.intent %}
+                <div class="card-row"><span>{{ ui.labels.symbol }}</span><strong>{{ live_execution.intent.symbol }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_side }}</span><strong>{{ live_execution.intent.side }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_quantity }}</span><strong>{{ live_execution.intent.quantity }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_entry }}</span><strong>{{ live_execution.intent.entry_price }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_sl }}</span><strong>{{ live_execution.intent.stop_loss }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_tp1 }}</span><strong>{{ live_execution.intent.take_profit_1 }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_tp2 }}</span><strong>{{ live_execution.intent.take_profit_2 }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_leverage }}</span><strong>{{ live_execution.intent.leverage }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_estimated_margin }}</span><strong>{{ live_execution.intent.estimated_margin }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.order_planned_risk }}</span><strong>{{ live_execution.intent.planned_risk }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.status }}</span><strong>{{ ui.order_intent_status[live_execution.intent.status] or live_execution.intent.status }}</strong></div>
+                {% if live_execution.intent.rejection_reasons %}
+                    {% for reason in live_execution.intent.rejection_reasons %}
+                        <div class="card-row"><span>⚠</span><strong>{{ reason }}</strong></div>
+                    {% endfor %}
+                {% endif %}
+            {% else %}
+                <div class="card-text">{{ ui.messages.no_order_intent_yet }}</div>
+            {% endif %}
+        </div>
+        <div class="card-text ai-disclaimer">{{ ui.messages.live_execution_disclaimer }}</div>
+    </section>
+
+    <section class="card live-trading-card">
+        <div class="card-title">{{ ui.sections.live_trading }}</div>
+        {% if live_trading.has_unprotected_position %}
+            <div class="card-error">{{ ui.messages.critical_unprotected_position }}</div>
+        {% endif %}
+        <div class="card-row"><span>{{ ui.labels.live_runtime_status }}</span><strong>{{ live_trading.runtime_status_label }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.live_trading_status }}</span><strong>{{ live_trading.status_label }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.live_trading_mode }}</span><strong>REAL BINANCE</strong></div>
+        <div class="card-row"><span>{{ ui.labels.live_trading_kill_switch }}</span><strong>{{ live_trading.kill_switch }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.live_runtime_last_cycle }}</span><strong>{{ live_trading.last_cycle_at or '-' }}</strong></div>
+        <div class="card-row"><span>{{ ui.labels.live_runtime_symbols_checked }}</span><strong>{{ live_trading.symbols_checked_count }} ({{ live_trading.symbols_checked|join(', ') }})</strong></div>
+        <div class="card-row"><span>{{ ui.labels.live_runtime_last_checked_symbol }}</span><strong>{{ live_trading.last_checked_symbol or '-' }}</strong></div>
+        <div class="card-section">
+            <div class="section-title">{{ ui.labels.live_runtime_last_ready_setup }}</div>
+            {% if live_trading.last_ready_setup %}
+                <div class="card-row"><span>{{ ui.labels.symbol }}</span><strong>{{ live_trading.last_ready_setup.symbol }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.direction }}</span><strong>{{ ui.direction[live_trading.last_ready_setup.direction] or live_trading.last_ready_setup.direction }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.setup_type }}</span><strong>{{ ui.setup_type[live_trading.last_ready_setup.setup_type] or live_trading.last_ready_setup.setup_type }}</strong></div>
+                <div class="card-row"><span>{{ ui.labels.live_runtime_last_cycle }}</span><strong>{{ live_trading.last_ready_setup.checked_at }}</strong></div>
+            {% else %}
+                <div class="card-text">{{ ui.messages.no_ready_setup_yet }}</div>
+            {% endif %}
+        </div>
+        <div class="card-section">
+            <div class="section-title">{{ ui.labels.live_trading_last_result }}</div>
+            {% if live_trading.last_execution_result %}
+                <div class="card-row"><span>{{ ui.labels.status }}</span><strong>{{ live_trading.last_execution_result.status }}</strong></div>
+                {% if live_trading.last_execution_result.symbol %}
+                    <div class="card-row"><span>{{ ui.labels.symbol }}</span><strong>{{ live_trading.last_execution_result.symbol }}</strong></div>
+                {% endif %}
+                {% if live_trading.last_execution_result.entry_order_id %}
+                    <div class="card-row"><span>{{ ui.labels.execution_entry_order_id }}</span><strong>{{ live_trading.last_execution_result.entry_order_id }}</strong></div>
+                {% endif %}
+                {% if live_trading.last_execution_result.sl_order_id %}
+                    <div class="card-row"><span>{{ ui.labels.execution_sl_order_id }}</span><strong>{{ live_trading.last_execution_result.sl_order_id }}</strong></div>
+                {% endif %}
+                {% if live_trading.last_execution_result.tp1_order_id %}
+                    <div class="card-row"><span>{{ ui.labels.execution_tp1_order_id }}</span><strong>{{ live_trading.last_execution_result.tp1_order_id }}</strong></div>
+                {% endif %}
+                {% if live_trading.last_execution_result.tp2_order_id %}
+                    <div class="card-row"><span>{{ ui.labels.execution_tp2_order_id }}</span><strong>{{ live_trading.last_execution_result.tp2_order_id }}</strong></div>
+                {% endif %}
+                {% if live_trading.last_execution_result.error_message %}
+                    <div class="card-error">{{ live_trading.last_execution_result.error_message }}</div>
+                {% endif %}
+                {% for reason in live_trading.last_execution_result.reasons %}
+                    <div class="card-row"><span>⚠</span><strong>{{ reason }}</strong></div>
+                {% endfor %}
+            {% else %}
+                <div class="card-text">{{ ui.messages.no_execution_result_yet }}</div>
+            {% endif %}
+        </div>
+        <div class="card-text ai-disclaimer">{{ ui.messages.live_execution_disclaimer }}</div>
+    </section>
+
     <section class="card capital-card">
         <div class="card-title">{{ ui.sections.capital }}</div>
         <div class="card-row"><span>{{ ui.labels.starting_balance }}</span><strong>{{ balance.starting_balance }}</strong></div>

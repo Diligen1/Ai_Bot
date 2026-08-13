@@ -123,7 +123,10 @@ class PaperTradingEngine:
         """Runs exactly one synchronous tick. No sleeping, no threading — safe to call directly from tests."""
         now = now or datetime.now(timezone.utc)
         for symbol in self.symbols_provider():
-            self._process_symbol(symbol, now)
+            try:
+                self._process_symbol(symbol, now)
+            except Exception:
+                pass  # one bad symbol must never block the rest of this tick
 
     def _process_symbol(self, symbol: str, now: datetime) -> None:
         existing = self.db.get_open_paper_positions(symbol=symbol)

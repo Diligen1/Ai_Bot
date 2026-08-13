@@ -11,7 +11,20 @@
       "Bash(python -c \"import httpx2; print\\(httpx2.__file__\\)\")",
       "Bash(python -c 'import starlette,os;print\\(os.path.dirname\\(starlette.__file__\\)\\)')",
       "Bash(grep -rn \"httpx\" \"$\\(python -c 'import starlette,os;print\\(os.path.dirname\\(starlette.__file__\\)\\)'\\)/testclient.py\")",
-      "Bash(python -m pytest -q tests/test_ai_analyzer.py tests/test_ui_routes.py)"
+      "Bash(python -m pytest -q tests/test_ai_analyzer.py tests/test_ui_routes.py)",
+      "Bash(python -m pytest -q tests/test_binance_account_client.py tests/test_ui_routes.py)",
+      "Bash(git check-ignore *)",
+      "Bash(python -m pytest -q tests/test_binance_account_client.py -v)",
+      "Bash(python -m pytest -q tests/test_binance_account_client.py::test_missing_api_key_disables_connector -v)",
+      "Bash(python -m pytest -q tests/test_live_risk_guard.py tests/test_binance_account_client.py tests/test_ui_routes.py -v)",
+      "Bash(python -m pytest -q tests/test_binance_symbol_rules.py -v)",
+      "Bash(python -m pytest -q tests/test_live_execution_engine.py -v)",
+      "Bash(python -m pytest -q tests/test_live_execution_engine.py tests/test_binance_symbol_rules.py tests/test_live_risk_guard.py tests/test_binance_account_client.py tests/test_ui_routes.py)",
+      "Bash(python -m pytest -q tests/test_live_trading_client.py -v)",
+      "Bash(python -m pytest -q tests/test_live_trading_engine.py -v)",
+      "Bash(python -m pytest -q tests/test_live_trading_client.py tests/test_live_trading_engine.py tests/test_ui_routes.py tests/test_database_manager.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(python -m pytest -q tests/test_live_trading_engine.py tests/test_live_trading_client.py tests/test_live_execution_engine.py tests/test_binance_symbol_rules.py tests/test_live_risk_guard.py tests/test_binance_account_client.py -v)"
     ]
   }
 }
